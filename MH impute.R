@@ -49,9 +49,12 @@ pair_epds[2,"estimate"]; pair_epds[2,"SE"];pair_epds[2,"p.value"]  #12 months
 
 
 
-mh_imp <- function(outvar, basevars, n.imp, n.burn, n.between) {
+mh_imp <- function(outvar, basevars, adjvars = basevars, n.imp, n.burn, n.between) {
+  
+  set.seed=2024
   dat <- mh %>%
-    select(outvar, all_of(basevars), rand, stratification, Study_ID, time)
+    select(all_of(outvar), all_of(basevars),all_of(adjvars),
+           rand, stratification, Study_ID, time)
   
   x <- dat %>%   #covariates at  level 1 with no missing data allowed
     select(time)   %>%     
@@ -64,7 +67,7 @@ mh_imp <- function(outvar, basevars, n.imp, n.burn, n.between) {
     data.frame()
   
   
-  y <- dat %>% select(outvar)  %>% data.frame() #time level variables to be imputed
+  y <- dat %>% select(all_of(outvar))  %>% data.frame() #time level variables to be imputed
   y2 <- dat %>% select(all_of(basevars)) %>% data.frame()  #cluster level variables to be imputed
   
   # z = dat %>% #cluster level covariates in model  
@@ -86,13 +89,14 @@ mh_imp <- function(outvar, basevars, n.imp, n.burn, n.between) {
   imp.se6<-list(rep(NA,n.imp))
   
   form = formula(paste0(outvar, " ~ rand*time + stratification +", 
-                        paste0(basevars, collapse = "+"), "+ (1|clus)"))
+                        paste0(adjvars, collapse = "+"), "+ (1|clus)"))
   
   for (k in 1:n.imp) {
     dat.temp<-imp[imp$Imputation==k,]
     
     dat.temp<-data.frame(dat.temp, dat %>%  
-                           select(Study_ID))
+                             select(Study_ID, all_of(adjvars)))
+
     fit <- lmer(formula = form,
                 data = dat.temp)
     rt <- emmeans(fit, ~ rand * time )  #estimated means
@@ -134,11 +138,11 @@ mh_imp <- function(outvar, basevars, n.imp, n.burn, n.between) {
 }
 # outvar = "MH_EPDS"
 # basevars = c("BL_MH_EPDS", "MH_EPDS_12")
-n.burn=as.integer(10000)
-n.between=as.integer(10000)
-n.imp=as.integer(10)
+n.burn=as.integer(1000)
+n.between=as.integer(1000)
+n.imp=as.integer(5)
 
-set.seed=2024
+
 
 # HAMD_DEP,HAMA_ANX, SIGHAD, GAF, FAST, EPDS 
 
@@ -163,17 +167,20 @@ set.seed=2024
 
 (GAF_imp <- mh_imp(outvar = "MH_GAF", 
                       basevars = c("BL_MH_GAF", "Age", "income", "Education_years"), 
+                   vars = c("BL_MH_GAF", "Age", "income", "Education_years"), 
                       n.imp = n.imp, n.burn = n.burn, n.between = n.between))
 
 (FAST_imp <- mh_imp(outvar = "MH_FAST", 
                    basevars = c("BL_MH_FAST"), 
+                   adjvars = c("BL_MH_FAST", "Age", "income", "Education_years"), 
                    n.imp = n.imp, n.burn = n.burn, n.between = n.between))
 #singular with "income",, "Age", "Education_years and baseline  -NOT WORKING
 
 (epds_imp <- mh_imp(outvar = "MH_EPDS", 
-                    basevars = c("BL_MH_EPDS"), 
+                    basevars = c("BL_MH_EPDS",  "MH_EPDS_12"), 
+                    adjvars = c("BL_MH_EPDS","Age" ,"income" ,  "Education_years"),
                     n.imp = 5, n.burn = n.burn, n.between = n.between))  
-#singular ,"income" ,  "Education_years" , "Age" , "MH_EPDS_12"
+#singular ,"income" ,  "Education_years" , "Age"  - NOT WORKING
 
 
 
