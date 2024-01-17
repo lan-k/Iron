@@ -182,7 +182,7 @@ n.imp=as.integer(5)
                     n.imp = 5, n.burn = n.burn, n.between = n.between))  
 #singular ,"income" ,  "Education_years" , "Age"  - NOT WORKING
 
-
+#BL_total_mini is baseline variable for MINI
 
 save(hama_imp, hamd_imp, SIGHAD_imp, GAF_imp, FAST_imp, epds_imp, file="../mh_imp.rds")
 
