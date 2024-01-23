@@ -62,7 +62,7 @@ base_tab <- base_tab %>%
          Variable=gsub("AANX"," - Anxiety", Variable)) 
 
 
-base_tab%>%
+base_tab %>%
   flextable() %>%
   autofit() %>%
   set_header_labels(Variable = "Variable",
@@ -70,4 +70,4 @@ base_tab%>%
              med_iqr_PINK = pink_lab) %>%
   set_caption(caption = "Baseline Mental Health Descriptives")
 
-knitr::kable()
+knitr::kable(base_tab)
