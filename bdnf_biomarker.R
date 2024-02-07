@@ -14,6 +14,7 @@ library(haven)
 library(lme4)
 library(lmerTest)
 library(emmeans)
+library(splines)
 
  
 # rct <- read.csv("../../biomarkers/Iron dose RCT_audit_24jan_TIDY.csv",
@@ -26,10 +27,41 @@ iron <- read_sas(data_file = "../iron_long.sas7bdat") %>%
   group_by(Study_ID) %>%
   mutate(iron_cum = cumsum(topup_given),
          iron_cum = ifelse(rand=="BLUE", iron_cum + 1, iron_cum  + 2 ),
-         cumdose = 500*iron_cum) %>%
+         cumdose = ifelse(row_number() == 1, iron_cum*500,lag(iron_cum)*500)) %>%
   ungroup()
+#cumdose is cumulative dose BEFORE time point
 
-time_since_last_dose <- iron %>%
+
+# dose <- read.csv(file="../../biomarkers/PO_cumulative_dose_days.csv")
+# 
+# dose_long <- dose %>%
+#   pivot_longer(cols=contains("time"),names_to = "time", names_transform = readr::parse_number,
+#                values_to="time_since_last_dose") %>%
+#   select(!contains("cumdose|PO"),  !Anemia)
+
+##these 
+# dose_long <- bind_rows(dose %>% select(Study_ID, cumdose_FU1, time_last_dose_FU1) %>%
+#                          mutate(time = 3) %>%
+#                          rename(cumdose=cumdose_FU1, time_last_dose = time_last_dose_FU1),
+#                        dose %>% select(Study_ID, cumdose_FU2, time_last_dose_FU2) %>%
+#                          mutate(time = 6) %>%
+#                          rename(cumdose=cumdose_FU2, time_last_dose = time_last_dose_FU2)) %>%
+#   arrange(Study_ID, time)
+
+dose_dates <- read.csv(file="../../biomarkers/variable_dates_13_02_2023.csv", na.string="") %>%
+  select(Study_ID, contains("_date"), contains("_FU")) %>%
+  filter(!is.na(Study_ID))
+
+#convert to long
+
+dose_dates_long <- dose_dates %>%
+  pivot_longer(!Study_ID, values_to = "Date", names_to = "time")
+
+dose_dates_long <- dose_dates_long %>% 
+  mutate(time=case_when(grepl("4week", time) ~ 1,
+                        ))
+  
+last_dose <- iron %>%
   filter(topup_given == 1 | time %in% c(3,6)) %>%
   select(Study_ID,time, rand,stratification, topup_given,iron_cum,  cumdose) %>%
   group_by(Study_ID) %>%
@@ -38,8 +70,9 @@ time_since_last_dose <- iron %>%
          prev_topup_time = ifelse(prev_topup == 1, prev_meas, lag(prev_meas)))
 
 
-iron_topup <- left_join(iron, time_since_last_dose %>% 
+iron_topup <- left_join(iron, last_dose %>% 
                           select(!c(prev_meas))) %>%
+  left_join(dose_long) %>%
   filter(time %in% c(3,6)) %>%
   mutate(prev_topup_time = factor(ifelse(is.na(prev_topup_time), 0, prev_topup_time), 
                                   levels=0:5, ordered = TRUE))
@@ -83,7 +116,7 @@ dat <- dat %>% filter( time != "SCR") %>%
               rename(scr_bdnf = bdnf_pg_ml), by = "study_no") %>%
   left_join(iron_topup %>% select(Study_ID,time,stratification, 
                                   topup_given, cumdose, prev_topup,
-                                  prev_topup_time) %>%
+                                  prev_topup_time, time_since_last_dose) %>%
 
               mutate(time=ifelse(time==3, "FU1","FU2"),
                      prev_topup = relevel(factor(prev_topup), ref="0")), 
@@ -113,20 +146,22 @@ tapply(dat_noCB$bdnf_change, dat_noCB$time, summary)
 
 
 #---- lmer_bdnf ----
+#randomisation group
 ##cord blood
 fitrand_cb <- lm(log(bdnf_pg_ml) ~ randomisation + stratification + log(scr_bdnf),
                  data = cord)
 
 summary(fitrand_cb)
 
-
+#maternal
 fitrand <- lmer(formula = bdnf_change ~ randomisation*time + stratification + 
                   log(scr_bdnf) + (1|study_no),
-             data = dat_noCB) 
+                data = dat_noCB) 
 summary(fitrand)
 anova(fitrand)
 (p <- summary(pairs(emmeans(fitrand, ~ randomisation * time ), 
-                            simple="randomisation")))  #contrasts
+                    simple="randomisation")))  #contrasts
+
 
 
 ##cumulative dose
@@ -145,9 +180,28 @@ fitrand_prev <- lmer(formula = bdnf_change ~ randomisation*prev_topup + stratifi
                 data = dat_noCB) 
 
 summary(fitrand_prev)
+
+
 anova(fitrand_prev)
 (pprev <- summary(pairs(emmeans(fitrand_prev, ~ randomisation * prev_topup ), 
                     simple="prev_topup")))  #contrasts
+
+##previous dose and time since last dose
+
+fitrand_prev_time <- lmer(formula = bdnf_change ~ randomisation*prev_topup + stratification + 
+                      bs(time_last_dose) + log(scr_bdnf) + (1|study_no),
+                     data = dat_noCB) 
+
+summary(fitrand_prev_time)
+anova(fitrand_prev_time)
+(pprev <- summary(pairs(emmeans(fitrand_prev_time, ~ randomisation * prev_topup ), 
+                        simple="prev_topup")))
+
+
+
+
+
+
 
 
 
