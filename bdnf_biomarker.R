@@ -48,18 +48,16 @@ iron <- read_sas(data_file = "../iron_long.sas7bdat") %>%
 #                          rename(cumdose=cumdose_FU2, time_last_dose = time_last_dose_FU2)) %>%
 #   arrange(Study_ID, time)
 
-dose_dates <- read.csv(file="../../biomarkers/variable_dates_13_02_2023.csv", na.string="") %>%
-  select(Study_ID, contains("_date"), contains("_FU")) %>%
-  filter(!is.na(Study_ID))
+# dose_dates <- read.csv(file="../../biomarkers/variable_dates_13_02_2023.csv", na.string="") %>%
+#   select(Study_ID, contains("_date"), contains("_FU")) %>%
+#   filter(!is.na(Study_ID))
+# 
+# #convert to long
+# 
+# dose_dates_long <- dose_dates %>%
+#   pivot_longer(!Study_ID, values_to = "Date", names_to = "time")
 
-#convert to long
 
-dose_dates_long <- dose_dates %>%
-  pivot_longer(!Study_ID, values_to = "Date", names_to = "time")
-
-dose_dates_long <- dose_dates_long %>% 
-  mutate(time=case_when(grepl("4week", time) ~ 1,
-                        ))
   
 last_dose <- iron %>%
   filter(topup_given == 1 | time %in% c(3,6)) %>%
