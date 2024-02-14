@@ -2,6 +2,10 @@
 ##topup_orig: 0=no; 1= yes; 2= required but not administered; 3 = administered by not required
 #BLUE is 500mg
 #PINK is 1000 mg
+#prev_topup is whether a topup was given at the pervious visit
+#ntopup is number of topup at current visit
+# prev_ntopup is number of topup at previous visit
+#cumdose is cumulative dose at previous visit
 
 #---- biomarker_data ----
 
@@ -99,13 +103,13 @@ bdnf <- read.csv("../../biomarkers/19_BDNF_complete_dataset_replaced_15_BDNF_in_
   janitor::clean_names() %>%
   mutate(bdnf_pg_ml = bdnf_pg_ml/1000)
 
-dat <- read.csv("../../biomarkers/joined_left_1.csv",stringsAsFactors = F, na.strings="") %>% 
+dat_bdnf <- read.csv("../../biomarkers/joined_left_1.csv",stringsAsFactors = F, na.strings="") %>% 
   janitor::clean_names() %>%
   mutate(randomisation = relevel(factor(randomisation), ref="PINK")) %>%
   filter(study_no %in% ids)
 
 
-dat <- dat %>%
+dat_bdnf <- dat_bdnf %>%
   left_join(bdnf) %>%
   left_join(cortisol) %>%
   rename(time = sample) %>%
@@ -115,9 +119,9 @@ dat <- dat %>%
   
 
 
-base = dat %>% filter(time == "SCR")
+base = dat_bdnf %>% filter(time == "SCR")
 
-dat <- dat %>% filter( time != "SCR") %>%
+dat <- dat_bdnf %>% filter( time != "SCR") %>%
   left_join(base %>% select(study_no, bdnf_pg_ml) %>%
               rename(scr_bdnf = bdnf_pg_ml), by = "study_no") %>%
   left_join(iron_topup %>% select(Study_ID,time,stratification, 
@@ -156,12 +160,79 @@ tapply(dat_noCB$bdnf_change, dat_noCB$time, summary)
 
 mh <- left_join(mh, dat_noCB %>% select(study_no,time, cumdose, ntopup ),
                 by=c("Study_ID"="study_no","time")) 
+#---- desc_bdnf ----
 
+quantile_str <- function(x, probs = c(0.25, 0.5, 0.75), digits=0) {
+  value = quantile(x, probs, na.rm=T, digits=digits)
+  n=sum(!is.na(x))
+  
+  med_iqr = paste0(as.character(round(value[2],digits=digits)), " (", 
+                   as.character(round(value[1],digits=digits)), "-",
+                   as.character(round(value[3],digits=digits)), ")",
+                   " (N=",n,")")
+  
+  return(med_iqr)
+}
+
+base_n = base %>%
+  group_by(rand) %>%
+  summarise(n=n()) %>%
+  ungroup()
+
+
+
+blue_lab = paste0("500 mg"," (n=", as.character(base_n %>% filter(rand=="BLUE") %>% pull(n)), ")")
+pink_lab = paste0("1000 mg"," (n=", as.character(base_n %>% filter(rand=="PINK") %>% pull(n)), ")")
+
+
+
+bdnf_desc = dat_bdnf %>%
+  group_by(rand, time) %>%
+  reframe(across(contains("bdnf"), \(x) quantile_str(x, digits=1))) %>%
+  ungroup()
+
+
+bdnf_desc_wide <- bdnf_desc %>%
+  pivot_wider(names_from = "rand", values_from = "bdnf_pg_ml") 
+
+
+bdnf_desc_wide %>%
+  flextable() %>%
+  autofit() %>%
+  set_header_labels(time = "Time point",
+                    BLUE = blue_lab,
+                    PINK = pink_lab) %>%
+  set_caption(caption = "BDNF (pg/ml) (N)")
+
+knitr::kable(bdnf_desc_wide)
+
+#---- desc_cumdose ----
+
+desc_cumdose <- dat_noCB %>%
+  group_by(rand, time) %>%
+  summarise(cumdose = mean(cumdose, na.rm=T),
+            ntopup = mean(ntopup, na.rm=T),
+            prev_ntopup = mean(prev_ntopup, na.rm=T)) %>%
+  ungroup() 
+##sd not working
+
+pink <- dat_noCB %>% filter(rand == "PINK")
+blue <- dat_noCB %>% filter(rand == "BLUE")
+
+tapply(pink$cumdose, pink$time, sd)
+tapply(blue$cumdose, blue$time, sd)
+
+
+tapply(pink$ntopup, pink$time, sd)
+tapply(blue$ntopup, blue$time, sd)
+
+tapply(pink$prev_ntopup, pink$time, sd)
+tapply(blue$prev_ntopup, blue$time, sd)
 
 #---- lmer_bdnf ----
 
 dat_noCB <- dat_noCB %>% 
-  mutate(cumdosesm = cumdose/1000) 
+  mutate(cumdosesm = cumdose/500) 
 
 #randomisation group
 ##cord blood
@@ -215,7 +286,7 @@ fitdose <- lmer(formula = bdnf_change ~ cumdosesm + stratification +
 anova(fitdose)
 hist(residuals(fitdose))
 
-df_dose <- data.frame(Covariate = c("Cumulative dose"),
+df_dose <- data.frame(Covariate = c("Cumulative dose (increase in 500mg)"),
                       Estimate = s_dose["cumdosesm","Estimate"],
                       se = s_dose["cumdosesm","Std. Error"],
                       p=format.pval(s_dose["cumdosesm","Pr(>|t|)"], eps=0.001,2))
@@ -301,18 +372,19 @@ tab_bdnf %>%
   flextable %>%
   autofit() %>%
   theme_box() %>%
-  set_header_labels(est_ci = "Estimate (increase in 1000mg) (95% CI)")
+  set_header_labels(est_ci = "Estimate (95% CI)")
 
 
+#---- lmer_mh_cumdose ----
 #### MH outcomes
 
-mh <- mh %>% mutate(cumdose = cumdose/1000)
+mh <- mh %>% mutate(cumdose = cumdose/500)
 
 MH_cumdose <- function(outvar, exposure = "cumdose", 
                        adjvars = c("Age","income","Education_years"),
                        basevar = NULL, exp = F) {
   
-  form = formula(paste0(outvar, " ~",  exposure," + " , paste(adjvars, collapse = "+"),
+  form = formula(paste0(outvar, " ~",  exposure,"  + " , paste(adjvars, collapse = "+"),
                  "+ (1|Study_ID) +",basevar) )
     
   fit <- lmer(formula = form,data = mh)
@@ -360,7 +432,7 @@ MH_cumdose <- function(outvar, exposure = "cumdose",
 
 (FAST <- MH_cumdose(outvar = "MH_FAST", basevar ="BL_MH_FAST"))
 
-(epds <- MH_cumdose("MH_EPDS", basevar ="BL_MH_EPDS"))
+(epds <- MH_cumdose(outvar = "MH_EPDS", basevar ="BL_MH_EPDS"))
 
 
 
@@ -373,7 +445,7 @@ cumdose_tab %>%
   flextable %>%
   autofit() %>%
   theme_box() %>%
-  set_header_labels(est_ci = "Estimate (increase in 1000mg) (95% CI)")
+  set_header_labels(est_ci = "Estimate (increase in 500mg) (95% CI)")
 
 
 ##topups
