@@ -2,10 +2,9 @@
 ##topup_orig: 0=no; 1= yes; 2= required but not administered; 3 = administered by not required
 #BLUE is 500mg
 #PINK is 1000 mg
-#prev_topup is whether a topup was given at the pervious visit
-#ntopup is number of topup at current visit
-# prev_ntopup is number of topup at previous visit
-#cumdose is cumulative dose at previous visit
+#mediation analysis of IV dose on HAM-D and EPDS via Vitamin D and IL-6 levels
+# exposure variable is treatment group
+
 
 #---- biomarker_data ----
 
@@ -94,10 +93,15 @@ mh <- read_sas(data_file = "../iron_mh.sas7bdat") %>%
 
 ids <- mh %>% pull(Study_ID) %>% unique()
 
-agp <- read.csv("../../biomarkers/04_agp.csv",stringsAsFactors = F, na.strings="") %>% 
+
+
+il6 <- read.csv("../../VitD and IL6/18_inflammatory_panel.csv",
+                stringsAsFactors = F, na.strings="") %>% 
   janitor::clean_names()
-cortisol <- read.csv("../../biomarkers/10_cortisol.csv",stringsAsFactors = F, na.strings="") %>% 
+vitd <- read.csv("../../VitD and IL6/PO_FGF_Ca_Haem_vitD_long_for_stats_step2.csv",
+                 stringsAsFactors = F, na.strings="") %>% 
   janitor::clean_names()
+
 
 
 bdnf <- read.csv("../../biomarkers/19_BDNF_complete_dataset_replaced_15_BDNF_in_R.csv",
