@@ -2,7 +2,8 @@
 ##topup_orig: 0=no; 1= yes; 2= required but not administered; 3 = administered by not required
 #BLUE is 500mg
 #PINK is 1000 mg
-#mediation analysis of IV dose on HAM-D and EPDS via Vitamin D and IL-6 levels
+#mediation analysis of IV dose on MH_HAMD_DEP and MH_EPDS via Vitamin D and IL-6 levels
+# note: MH_EPDS_12 is from 12 week visit (not 12 month)
 # exposure variable is treatment group
 
 
@@ -21,152 +22,67 @@ library(splines)
 library(flextable)
 
 
- 
-# rct <- read.csv("../../biomarkers/Iron dose RCT_audit_24jan_TIDY.csv",
-#                 stringsAsFactors = F, na.strings="") %>% 
-#   janitor::clean_names() 
-
-iron <- read_sas(data_file = "../iron_long.sas7bdat") %>%
-  mutate(topup_given = ifelse(topup_orig %in% c(1,3), 1, 0),
-         stratification = factor(stratification)) %>%
-  group_by(Study_ID) %>%
-  mutate(ntopup = cumsum(topup_given),
-         prev_ntopup =  lag(ntopup),
-         prev_ntopup = ifelse(is.na(prev_ntopup), 0, prev_ntopup),
-         iron_cum = ifelse(rand=="BLUE", ntopup + 1, ntopup  + 2 ),
-         cumdose = ifelse(row_number() == 1, iron_cum*500,lag(iron_cum)*500)) %>%
-  ungroup()
-#cumdose is cumulative dose BEFORE time point
-
-
-# dose <- read.csv(file="../../biomarkers/PO_cumulative_dose_days.csv")
-# 
-# dose_long <- dose %>%
-#   pivot_longer(cols=contains("time"),names_to = "time", names_transform = readr::parse_number,
-#                values_to="time_since_last_dose") %>%
-#   select(!contains("cumdose|PO"),  !Anemia)
-
-##these 
-# dose_long <- bind_rows(dose %>% select(Study_ID, cumdose_FU1, time_last_dose_FU1) %>%
-#                          mutate(time = 3) %>%
-#                          rename(cumdose=cumdose_FU1, time_last_dose = time_last_dose_FU1),
-#                        dose %>% select(Study_ID, cumdose_FU2, time_last_dose_FU2) %>%
-#                          mutate(time = 6) %>%
-#                          rename(cumdose=cumdose_FU2, time_last_dose = time_last_dose_FU2)) %>%
-#   arrange(Study_ID, time)
-
-# dose_dates <- read.csv(file="../../biomarkers/variable_dates_13_02_2023.csv", na.string="") %>%
-#   select(Study_ID, contains("_date"), contains("_FU")) %>%
-#   filter(!is.na(Study_ID))
-# 
-# #convert to long
-# 
-# dose_dates_long <- dose_dates %>%
-#   pivot_longer(!Study_ID, values_to = "Date", names_to = "time")
-
-
-  
-last_dose <- iron %>%
-  filter(topup_given == 1 | time %in% c(3,6)) %>%
-  select(Study_ID,time, rand,stratification, topup_given,iron_cum,  cumdose) %>%
-  group_by(Study_ID) %>%
-  mutate(prev_topup= lag(topup_given),
-         prev_meas = lag(time),
-         prev_topup_time = ifelse(prev_topup == 1, prev_meas, lag(prev_meas)))
-
-
-iron_topup <- left_join(iron, last_dose %>% 
-                          select(!c(prev_meas))) %>%
-  # left_join(dose_long) %>%
-  filter(time %in% c(3,6)) %>%
-  mutate(prev_topup_time = factor(ifelse(is.na(prev_topup_time), 0, prev_topup_time), 
-                                  levels=0:5, ordered = TRUE))
-         
-table(iron_topup$time, iron_topup$prev_topup_time)
-
-#if no topup given then prev time is at randomisation
-
 
 mh <- read_sas(data_file = "../iron_mh.sas7bdat") %>%
   filter(time %in% c(3,6)) %>%
-  mutate(time=ifelse(time==3, "FU1","FU2"))
+  mutate(time=ifelse(time==3, "FU1","FU2")) %>% 
+  janitor::clean_names()
 
-ids <- mh %>% pull(Study_ID) %>% unique()
+ids <- mh %>% pull(study_id) %>% unique()
 
 
 
 il6 <- read.csv("../../VitD and IL6/18_inflammatory_panel.csv",
                 stringsAsFactors = F, na.strings="") %>% 
-  janitor::clean_names()
+  janitor::clean_names() %>%
+  mutate(il_6 = case_when(il_6_pg_ml == "<=0.9" ~ 0.89,
+                          il_6_pg_ml == "<=0.2" ~ 0.19,
+                          TRUE ~ as.numeric(il_6_pg_ml))) %>%
+  rename(time = sample, study_id = study_no) %>% 
+  select(study_id, time, il_6) %>%
+  arrange(study_id, time) 
+
+il6_base <- il6 %>% filter(time == "SCR") %>%
+  unique() %>%
+  rename(il_6_screen = il_6) %>%
+  select(!time)
+
+il6_cb <- il6 %>% filter(time == "CB") %>%
+  unique()
+
+il6_fu <- il6 %>% filter(time %in% c("FU1", "FU2"))   %>%
+  unique()  
+
+
 vitd <- read.csv("../../VitD and IL6/PO_FGF_Ca_Haem_vitD_long_for_stats_step2.csv",
-                 stringsAsFactors = F, na.strings="") %>% 
-  janitor::clean_names()
-
-
-
-bdnf <- read.csv("../../biomarkers/19_BDNF_complete_dataset_replaced_15_BDNF_in_R.csv",
-                 stringsAsFactors = F, na.strings="") %>% 
+                 stringsAsFactors = F, na.strings="NA") %>% 
   janitor::clean_names() %>%
-  mutate(bdnf_pg_ml = bdnf_pg_ml/1000)
-
-dat_bdnf <- read.csv("../../biomarkers/joined_left_1.csv",stringsAsFactors = F, na.strings="") %>% 
-  janitor::clean_names() %>%
-  mutate(randomisation = relevel(factor(randomisation), ref="PINK")) %>%
-  filter(study_no %in% ids)
-
-
-dat_bdnf <- dat_bdnf %>%
-  left_join(bdnf) %>%
-  left_join(cortisol) %>%
-  rename(time = sample) %>%
-  select(!c(contains("study_no2"), contains("sample"))) %>%
-  filter(!is.na(randomisation)) %>%
-  mutate(rand=relevel(factor(randomisation), ref="PINK"))
-  
-
-
-base = dat_bdnf %>% filter(time == "SCR")
-
-dat <- dat_bdnf %>% filter( time != "SCR") %>%
-  left_join(base %>% select(study_no, bdnf_pg_ml) %>%
-              rename(scr_bdnf = bdnf_pg_ml), by = "study_no") %>%
-  left_join(iron_topup %>% select(Study_ID,time,stratification, 
-                                  # time_since_last_dose,
-                                  ntopup,prev_ntopup,
-                                  topup_given, cumdose, prev_topup,
-                                  prev_topup_time) %>%
-
-              mutate(time=ifelse(time==3, "FU1","FU2"),
-                     prev_topup = ifelse(is.na(prev_topup), 0, prev_topup),
-                     prev_topup = relevel(factor(prev_topup), ref="0")), 
-            by=c("study_no"="Study_ID", "time")) %>%
-  left_join(mh %>% select(Study_ID,time, Age, income, Education_years), 
-            by=c("study_no"="Study_ID", "time") ) 
+  arrange(study_id, fu) %>%
+  mutate(time=ifelse(fu == 1, "FU1", "FU2")) 
 
 
 
-cord <- dat %>%
-  filter(time == "CB") %>%
-  select(!stratification) %>%
-  left_join(iron %>% select(Study_ID, stratification) %>% unique(), 
-            by=c("study_no"="Study_ID"))
-
-dat_noCB <- dat %>% filter(time != "CB") %>%
-  mutate(time=relevel(factor(time), ref="FU1"),
-         bdnf_change = bdnf_pg_ml - scr_bdnf)
-
-
-table(dat_noCB$time)
-
-tapply(dat_noCB$bdnf_pg_ml, dat_noCB$randomisation, summary)
-
-tapply(dat_noCB$bdnf_change, dat_noCB$randomisation, summary)
-tapply(dat_noCB$bdnf_change, dat_noCB$time, summary)
+mh_il6_vitd <- mh %>%
+  select(study_id, rand, time, stratification, age, income, education_years, 
+         matches("epds|hamd") ) %>%
+  left_join(il6_fu ) %>%
+  left_join(il6_base) %>%
+  left_join(vitd %>% select(study_id, time, contains("oh"))) %>%
+  arrange(study_id, time) %>%
+  filter(!is.na(rand)) %>%
+  mutate(rand=relevel(factor(rand), ref="PINK"))
 
 
-mh <- left_join(mh, dat_noCB %>% select(study_no,time, cumdose, ntopup ),
-                by=c("Study_ID"="study_no","time")) 
-#---- desc_bdnf ----
+
+base = mh_il6_vitd %>%
+  select(study_id, rand, contains("screen")) %>%
+  unique()
+
+colnames(base) <-  sub("_screen.*", "", colnames(base))
+
+#---- desc ----
+
+
 
 quantile_str <- function(x, probs = c(0.25, 0.5, 0.75), digits=0) {
   value = quantile(x, probs, na.rm=T, digits=digits)
@@ -186,31 +102,48 @@ base_n = base %>%
   ungroup()
 
 
-
 blue_lab = paste0("500 mg"," (n=", as.character(base_n %>% filter(rand=="BLUE") %>% pull(n)), ")")
 pink_lab = paste0("1000 mg"," (n=", as.character(base_n %>% filter(rand=="PINK") %>% pull(n)), ")")
 
 
+base_desc <- base %>%
+  group_by(rand) %>%
+  reframe(across(matches("il_6|oh"), \(x) quantile_str(x, digits=2))) %>%
+  ungroup() %>%
+  mutate(time="SCR")
 
-bdnf_desc = dat_bdnf %>%
+
+base_desc_wide <- base_desc %>%
+  pivot_wider(names_from = "rand", 
+              values_from = c("il_6","epi25ohd3","x25ohd2", "x25ohd3") )
+
+
+desc = mh_il6_vitd %>%
+  select(!contains("screen")) %>%
   group_by(rand, time) %>%
-  reframe(across(contains("bdnf"), \(x) quantile_str(x, digits=1))) %>%
+  reframe(across(matches("il_6|oh"), \(x) quantile_str(x, digits=2))) %>%
   ungroup()
 
-
-bdnf_desc_wide <- bdnf_desc %>%
-  pivot_wider(names_from = "rand", values_from = "bdnf_pg_ml") 
+colnames(desc) <-  sub("fu", "", colnames(desc))
 
 
-bdnf_desc_wide %>%
+desc_wide <- desc %>%
+  pivot_wider(names_from = "rand", 
+              values_from = c("il_6","epi25ohd3","x25ohd2", "x25ohd3") )
+
+desc_wide <-bind_rows(base_desc_wide, desc_wide) 
+
+
+
+desc_wide %>%
   flextable() %>%
   autofit() %>%
   set_header_labels(time = "Time point",
                     BLUE = blue_lab,
                     PINK = pink_lab) %>%
-  set_caption(caption = "BDNF (pg/ml) (N)")
+  set_caption(caption = "Biomarkers (N)")
 
-knitr::kable(bdnf_desc_wide)
+knitr::kable(desc_wide)
 
 #---- desc_cumdose ----
 
