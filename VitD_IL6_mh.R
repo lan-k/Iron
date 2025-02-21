@@ -1,10 +1,22 @@
 ###biomarker data
-##topup_orig: 0=no; 1= yes; 2= required but not administered; 3 = administered by not required
+
 #BLUE is 500mg
 #PINK is 1000 mg
 #mediation analysis of IV dose on MH_HAMD_DEP and MH_EPDS via Vitamin D and IL-6 levels
 # note: MH_EPDS_12 is from 12 week visit (not 12 month)
 # exposure variable is treatment group
+
+#limits of detection: Epi25(OH)d3 <2.0, 25(OH)d2 <3.0, 25(OH)d3 no limit in data
+#IL-6 there seem to be 2 limits: 0.9 and 0.2
+
+#Model 1: biomarker as the outcome and IVI as the exposure
+#Model 2: mediation analysis. MH as the outcome, biomarkers as the mediator, ICI as the exposure
+
+#Model 1: Tobit regression for left truncated biomarkers 
+# + lmer for normally distributed + estimation below the threshold using random number, compare
+
+#Model 2: use mediate R package for 25(OH)d3
+# see results of model 1 for other biomarkers, use random estimation under threshold if required
 
 
 #---- biomarker_data ----
@@ -35,8 +47,8 @@ ids <- mh %>% pull(study_id) %>% unique()
 il6 <- read.csv("../../VitD and IL6/18_inflammatory_panel.csv",
                 stringsAsFactors = F, na.strings="") %>% 
   janitor::clean_names() %>%
-  mutate(il_6 = case_when(il_6_pg_ml == "<=0.9" ~ 0.89,
-                          il_6_pg_ml == "<=0.2" ~ 0.19,
+  mutate(il_6 = case_when(il_6_pg_ml == "<=0.9" ~ 0.5 + 0.4*runif(1),
+                          il_6_pg_ml == "<=0.2" ~ 0.2,
                           TRUE ~ as.numeric(il_6_pg_ml))) %>%
   rename(time = sample, study_id = study_no) %>% 
   select(study_id, time, il_6) %>%
@@ -80,9 +92,12 @@ base = mh_il6_vitd %>%
 
 colnames(base) <-  sub("_screen.*", "", colnames(base))
 
+save(base,mh_il6_vitd, file="mh_il6_vitd.rds" )
+
 #---- desc ----
-
-
+# hist(base$x25ohd3) #most normal
+# hist(base$x25ohd2)
+# hist(base$epi25ohd3)  
 
 quantile_str <- function(x, probs = c(0.25, 0.5, 0.75), digits=0) {
   value = quantile(x, probs, na.rm=T, digits=digits)
@@ -139,9 +154,15 @@ desc_wide %>%
   flextable() %>%
   autofit() %>%
   set_header_labels(time = "Time point",
-                    BLUE = blue_lab,
-                    PINK = pink_lab) %>%
-  set_caption(caption = "Biomarkers (N)")
+                    il_6_PINK = "IL-6, \n500 mg",
+                    il_6_BLUE = "IL-6, \n1000 mg",
+                    epi25ohd3_PINK = "Epi-25(OH)D3, \n500mg",
+                    epi25ohd3_BLUE = "Epi-25(OH)D3, \n1000mg",
+                    x25ohd2_PINK = "25(OH)D2, \n500mg",
+                    x25ohd2_BLUE = "25(OH)D2, \n1000mg",
+                    x25ohd3_PINK = "25(OH)D3, \n500mg",
+                    x25ohd3_BLUE = "25(OH)D3, \n1000mg") %>%
+  set_caption(caption = "Biomarkers (median (IQR))")
 
 knitr::kable(desc_wide)
 
