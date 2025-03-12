@@ -1,4 +1,7 @@
 #ex 1 from vignette
+library(censReg)
+browseVignettes("censReg")
+
 set.seed( 123 )
 pData <- data.frame(
   id = rep( paste( "F", 1:15, sep = "_" ), each = 4 ),
@@ -19,7 +22,7 @@ summary( panelResult )
 
 
 ## ex 2 
-# https://stats.stackexchange.com/questions/544652/how-to-write-a-random-effect-in-tobit-models-in-r-using-the-censreg-package/582354#582354
+# https://stats.stackexchange.com/questions/544652/how-to-write-a-random-effect-in-tobit-models-in-r-using-the-censreg-package/582354
 
 x=rep(c(0,2,4,6,8),20)
 beta0=rep(rnorm(20,0,1),each=5)

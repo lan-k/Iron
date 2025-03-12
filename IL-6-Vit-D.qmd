@@ -1,0 +1,103 @@
+---
+title: "Iron Supplementation and Vitamin D and IL-6 levels"
+author: "Lan Kelly"
+engine: knitr
+format: 
+  docx: default
+editor: visual
+date: "`r Sys.Date()`"
+execute: 
+  echo: false
+  cache: true
+bibliography: references.bib
+---
+
+# Introduction
+
+[@froessler2022]
+
+\newpage
+
+# Methods
+
+```{r}
+#| echo: false
+source("vitd_il6_regression.R")
+```
+
+`{r} nrow(mh_il6_vitd)`
+
+# Results
+
+@tbl-desc-tab shows descriptive statistics for Vitamin D and IL-6 levels at screening, 6 weeks and 12 months post-partum, by randomisation group.
+
+```{r}
+#| label: tbl-desc-tab
+#| tbl-cap: Descriptive Statistics
+#| results: 'asis'
+
+desc_wide %>%
+  select(FU, il_6_BLUE,il_6_PINK,epi25ohd3_BLUE, epi25ohd3_PINK,
+         x25ohd2_BLUE, x25ohd2_PINK, x25ohd3_BLUE, x25ohd3_PINK) %>%
+  mutate(FU = case_when(FU == "SCR" ~ "Screening",
+                        FU == "FU1" ~ "6 weeks PP",
+                        FU == "FU2" ~ "12 months PP")) %>%
+  flextable() %>%
+  autofit() %>%
+  set_header_labels(FU = "Time point",
+                    il_6_BLUE = "IL-6, \n500 mg",
+                    il_6_PINK = "IL-6, \n1000 mg",
+                    epi25ohd3_BLUE = "Epi-25(OH)D3, \n500mg",
+                    epi25ohd3_PINK = "Epi-25(OH)D3, \n1000mg",
+                    x25ohd2_BLUE = "25(OH)D2, \n500mg",
+                    x25ohd2_PINK = "25(OH)D2, \n1000mg",
+                    x25ohd3_BLUE = "25(OH)D3, \n500mg",
+                    x25ohd3_PINK = "25(OH)D3, \n1000mg"
+                    ) %>%
+  set_caption(caption = "Biomarkers (mean (SD))")
+
+
+
+
+```
+
+## Figures
+
+@fig-violin shows a violin plot
+
+```{r}
+#| label: fig-violin
+#| fig-cap: Violin plot
+#| warning: false
+
+plotdat <- mh_il6_vitd %>%
+  mutate(rand = ifelse(rand=="BLUE", "500mg", "100mg"))
+  
+  plotdat %>%
+  ggplot(aes(x=rand, y=il_6_screen)) +
+  geom_violin() +
+  theme_bw()
+
+
+```
+
+@tbl-tobit shows the results of regression for tobit vs random methods
+
+```{r}
+#| label: tbl-tobit
+#| results: 'asis'
+#| tbl-cap: Regression output
+
+
+tab_cens %>%
+  select(Outcome, Contrast, Level, est_ci, p) %>%
+  flextable %>%
+  autofit() %>%
+  theme_box() %>%
+  set_header_labels(est_ci = "RR (95% CI)")
+
+
+
+```
+
+# References
