@@ -138,3 +138,47 @@ fit_lmer = function(form, df, label = "") {
   return(outdf)
   
 }
+
+lmer_nolim = function(outcome, outlab, screen, df, limit) {
+  
+  df = df %>%
+    mutate(out={{outcome}},
+           out =ifelse(out == limit & limit > 0, limit*runif(1), out),
+           screen={{screen}},
+           screen =ifelse(screen == limit & limit > 0, limit*runif(1), screen))
+  
+  form = formula(log(out) ~ rand*time + stratification + log(screen) +
+                   (1|study_id))
+
+  fit <- lmer(formula = form, data = df) 
+  summary(fit) 
+  
+  (p <- summary(pairs(emmeans(fit, ~ rand * time ), 
+                      simple="rand")))  #contrasts PINK - BLUE i.e. 1000 - 500
+  
+  
+  estimate3<-as.numeric(p[1,"estimate"])  #estimate  at 6 weeks
+  se3<-as.numeric(p[1,"SE"]) #se at 6 weeks
+  p3 <-format.pval(p[1,"p.value"], eps=0.001,2)
+  
+  estimate6<-as.numeric(p[2,"estimate"])  #estimate at 12m
+  se6<-as.numeric(p[2,"SE"]) #se at 12m
+  p6 <-format.pval(p[2,"p.value"], eps=0.001,2)
+  
+  time=c("6 weeks", "12 months")
+  estimate = rbind(estimate3,estimate6)
+  se=rbind(se3,se6)
+  p=rbind(p3,p6)
+  
+  out_df = data.frame(Outcome = c(outlab,""),
+                      Contrast = c("500mg vs 1000mg",""), 
+                      Level=time, Estimate = exp(-estimate), 
+                      lower = exp(-estimate - 1.96*se),
+                      upper = exp(-estimate + 1.96*se),
+                      se = se, p=p)
+  
+  rownames(out_df) <- c()
+  
+  return(out_df)
+  
+}

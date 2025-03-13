@@ -8,28 +8,41 @@ editor: visual
 date: "`r Sys.Date()`"
 execute: 
   echo: false
-  cache: true
 bibliography: references.bib
 ---
 
 # Introduction
 
-[@froessler2022]
+This project is an investigation into the association between intravenous iron treatment (IVI) in pregnancy and its effect on post-partum interleukin-6 (IL-6) and Vitamin D levels and hence on maternal depression. The data were collected during a clinical trial described in [@froessler2022]. Three forms of Vitamin D were measured: 25(OH)D2, 25(OH)D3 and Epi25(OH)D3.
+
+# Methods
+
+IL-6 and Vitamin D levels were summarised using descriptive statistics. Due to skewness in some of the blood markers, means and standard deviations were calculated from the log-transformed values and then back-transformed. Violin plots of the biomarkers showed the distribution by treatment group and time point (screening, 6 weeks and 12 months post-partum). The biomarkers were affected by lower limits of detection, except for 25(OH)D3.
+
+## Association between IVI and biomarkers
+
+The association between IVI treatment dose (500mg or 1000mg) during pregnancy and biomarkers at 6 weeks and 12 months post-partum was analysed in two ways. The first method used repeated measures linear regression with log-transformed biomarkers as the outcome, with time point by treatment group, stratification group (at randomisation) and log-transformed biomarker value at screening as covariates. Where biomarkers were affected by lower limits of detection, a random number between 0 and the lower limit was generated and used in place of the lower limit. Since interleukin-6 appeared to have two loer limits, 0.9 pg/ml (representing values between 0.5 and 0.9) and 0.2 pg/ml, a random number between 0.5 and 0.9 was used instead of the 0.9 lower limit.
+
+The second method used repeated measures tobit regression, which treats lower or upper limits of detection as a form of censoring. The same covariates as the first method were included in the models. Since there can only be one lower limit, 0.2 was used as the lower limit for IL-6 and 0.9 values were replaced with a random number between 0.5 and 0.9. For 25(OH)D3, there was no lower limit of detection so tobit regression was not used.
+
+Estimates from both models were back-transformed to produced geometric mean rate ratios (RR) and 95% confidence intervals. Results from the two methods were compared for consistency.
+
+## Maternal depression
+
+In the investigation between post-partum maternal depression, biomarkers and IVI treatmetn during pregnancy, biomarkers are treated as a mediator. Some fo the effect of IVI treatment acts directly on maternal depression (the "direct effect"), while the "indirect effect" acts through the biomarkers. However, existing sofware for mediation analysis, such as the R software package 'mediation', can only account for lower limits of detection in the **outcome** (maternal depression in this analysis) but not the **mediator** (biomarkers).
 
 \newpage
 
-# Methods
+# Results
+
+## Descriptive Statistics
+
+@tbl-desc-tab shows descriptive statistics for Vitamin D and IL-6 levels at screening, 6 weeks and 12 months post-partum, by randomisation group.
 
 ```{r}
 #| echo: false
 source("vitd_il6_regression.R")
 ```
-
-`{r} nrow(mh_il6_vitd)`
-
-# Results
-
-@tbl-desc-tab shows descriptive statistics for Vitamin D and IL-6 levels at screening, 6 weeks and 12 months post-partum, by randomisation group.
 
 ```{r}
 #| label: tbl-desc-tab
@@ -61,27 +74,100 @@ desc_wide %>%
 
 ```
 
+\newpage
+
 ## Figures
 
-@fig-violin shows a violin plot
+Violin plots are shown of the distribution of values for IL-6 and three forms of Vitamin D. All show the effect of lower limits of detection except 25(OH)D3.
+
+### Interleukin-6
+
+@fig-il6 shows IL-6 by time point. SCR is screening, FU1 and FU2 are 6 weeks and 12 months post-partum.
 
 ```{r}
-#| label: fig-violin
-#| fig-cap: Violin plot
+#| label: fig-il6
+#| fig-cap: IL-6 by time point and treatment group
 #| warning: false
 
-plotdat <- mh_il6_vitd %>%
-  mutate(rand = ifelse(rand=="BLUE", "500mg", "100mg"))
+
+
+plotdat <- bind_rows(base %>% mutate(FU="SCR"), 
+                     mh_il6_vitd %>%
+                       rename(x25ohd3=x25ohd3fu,
+                              epi25ohd3=epi25ohd3fu,
+                              x25ohd2=x25ohd2fu)) %>%
+  mutate(rand = ifelse(rand=="BLUE", "500mg", "1000mg"),
+         rand=relevel(factor(rand), ref="500mg"),
+         FU = relevel(factor(FU), ref="SCR"))
   
   plotdat %>%
-  ggplot(aes(x=rand, y=il_6_screen)) +
-  geom_violin() +
-  theme_bw()
+  ggplot(aes(x=rand, y=il_6)) +
+    geom_violin() +
+    facet_wrap(~FU) +
+    ylab("IL-6 (pg/ml)") + xlab("") +
+    theme_bw()
 
 
 ```
 
-@tbl-tobit shows the results of regression for tobit vs random methods
+\newpage
+
+### Vitamin D
+
+@fig-d2, @fig-d3 and @fig-epid3 are violin plots of the three different forms of Vitamin D, 25(OH)D2, 25(OH)D3 and Epi25(OH)D3.
+
+```{r}
+#| label: fig-d2
+#| fig-cap: 25(OH)D2 by time point and treatment group
+#| warning: false
+
+
+plotdat %>%
+  ggplot(aes(x=rand, y=x25ohd2)) +
+    geom_violin() +
+    facet_wrap(~FU) +
+    ylab("25(OH)D2") + xlab("") +
+    theme_bw()
+
+
+
+```
+
+```{r}
+#| label: fig-d3
+#| fig-cap: 25(OH)D3 by time point and treatment group
+#| warning: false
+
+
+plotdat %>%
+  ggplot(aes(x=rand, y=x25ohd3)) +
+    geom_violin() +
+    facet_wrap(~FU) +
+    ylab("25(OH)D3") + xlab("") +
+    theme_bw()
+```
+
+```{r}
+#| label: fig-epid3
+#| fig-cap: Epi25(OH)D3 by time point and treatment group
+#| warning: false
+
+
+plotdat %>%
+  ggplot(aes(x=rand, y=x25ohd3)) +
+    geom_violin() +
+    facet_wrap(~FU) +
+    ylab("Epi25(OH)D3") + xlab("") +
+    theme_bw()
+```
+
+\newpage
+
+## Regression
+
+@tbl-tobit shows the results of regression for tobit vs random methods. "Censored" refers to the lower limit of detection analysed using the tobit model.
+
+Results from the two method were very similar. There were no significant differences in biomarkers between the two treatment groups at any time point, although the RR for IL-6 levels at 6 weeks was furthest from 1.0 and may have been significant if the sample size was larger.
 
 ```{r}
 #| label: tbl-tobit
@@ -94,10 +180,15 @@ tab_cens %>%
   flextable %>%
   autofit() %>%
   theme_box() %>%
-  set_header_labels(est_ci = "RR (95% CI)")
+  set_header_labels(est_ci = "RR (95% CI)",
+                    p="P-value")
 
 
 
 ```
+
+# Discussion
+
+Given the results from the two methods in the association analysis are similar, I propose using the random number method to replace the biomarker values affected by lower limits of detection for IL-6. For Vitamin D, I propose using the mediation analysis on 25 (OH)D3 only and not the other two forms.
 
 # References

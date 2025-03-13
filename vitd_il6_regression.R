@@ -94,6 +94,10 @@ desc_wide <-bind_rows(base_desc_wide, desc_wide)
 
 
 # ---- lmer_25ohd3_il_6 ----
+# repeated measures with a random numbe below the lower limit
+#Epi 25(OH)D3 lower limit is 2.0
+# 25(OH)D2 lower limit is 3.0
+# IL-6 lower limit is 0.2
 
 # 25ohd3 not affected by detection limits
 # hist(mh_il6_vitd$x25ohd3_screen)
@@ -114,50 +118,45 @@ mh_il6_vitd <- mh_il6_vitd %>%
          x25ohd2_screen_cens = ifelse(x25ohd2_screen == 2.99, 3*runif(1), x25ohd2_screen),
          il_6_nolim = ifelse(il_6 == 0.2, 0.2*runif(1),il_6),
          il_6_nolim_screen = ifelse(il_6_screen == 0.2, 0.2*runif(1),il_6_screen)) 
-
+# summary(mh_il6_vitd$x25ohd2fu)
+# hist(mh_il6_vitd$x25ohd2fu)
 
 # repeated measures for 25(OH)D3
 
-form = formula(log(x25ohd3fu) ~ rand*time + stratification + log(x25ohd3_screen) +
-                 (1|study_id))
-
-
-##FIX THIS
-# df_25ohd3 = fit_lmer(form, df = mh_il6_vitd, label = "25(OH)D3")
-
-
-fit_25ohd3 <- lmer(formula = form, data = mh_il6_vitd) 
-summary(fit_25ohd3) 
-
-
-# anova(fit_25ohd3)
-(p <- summary(pairs(emmeans(fit_25ohd3, ~ rand * time ), 
-                    simple="rand")))  #contrasts PINK - BLUE i.e. 1000 - 500
-
-
-estimate3<-as.numeric(p[1,"estimate"])  #estimate  at 6 weeks
-se3<-as.numeric(p[1,"SE"]) #se at 6 weeks
-p3 <-format.pval(p[1,"p.value"], eps=0.001,2)
-
-estimate6<-as.numeric(p[2,"estimate"])  #estimate at 12m
-se6<-as.numeric(p[2,"SE"]) #se at 12m
-p6 <-format.pval(p[2,"p.value"], eps=0.001,2)
-
-time=c("6 weeks", "12 months")
-estimate = rbind(estimate3,estimate6)
-se=rbind(se3,se6)
-p=rbind(p3,p6)
-
-df_25ohd3 = data.frame(Outcome = c("25(OH)D3",""),
-                       Contrast = c("500mg vs 1000mg",""), 
-                       Level=time, Estimate = exp(-estimate), 
-                       lower = exp(-estimate - 1.96*se),
-                       upper = exp(-estimate + 1.96*se),
-                       se = se, p=p)
-
-rownames(df_25ohd3) <- c()
-
-
+# form = formula(log(x25ohd3fu) ~ rand*time + stratification + log(x25ohd3_screen) +
+#                  (1|study_id))
+# 
+# 
+# fit_25ohd3 <- lmer(formula = form, data = mh_il6_vitd) 
+# summary(fit_25ohd3) 
+# 
+# 
+# # anova(fit_25ohd3)
+# (p <- summary(pairs(emmeans(fit_25ohd3, ~ rand * time ), 
+#                     simple="rand")))  #contrasts PINK - BLUE i.e. 1000 - 500
+# 
+# 
+# estimate3<-as.numeric(p[1,"estimate"])  #estimate  at 6 weeks
+# se3<-as.numeric(p[1,"SE"]) #se at 6 weeks
+# p3 <-format.pval(p[1,"p.value"], eps=0.001,2)
+# 
+# estimate6<-as.numeric(p[2,"estimate"])  #estimate at 12m
+# se6<-as.numeric(p[2,"SE"]) #se at 12m
+# p6 <-format.pval(p[2,"p.value"], eps=0.001,2)
+# 
+# time=c("6 weeks", "12 months")
+# estimate = rbind(estimate3,estimate6)
+# se=rbind(se3,se6)
+# p=rbind(p3,p6)
+# 
+# df_25ohd3 = data.frame(Outcome = c("25(OH)D3",""),
+#                        Contrast = c("500mg vs 1000mg",""), 
+#                        Level=time, Estimate = exp(-estimate), 
+#                        lower = exp(-estimate - 1.96*se),
+#                        upper = exp(-estimate + 1.96*se),
+#                        se = se, p=p)
+# 
+# rownames(df_25ohd3) <- c()
 
 
 # il_6 using a random number between 0 and 0.2 for detection limit
@@ -169,56 +168,67 @@ rownames(df_25ohd3) <- c()
 # hist(log(mh_il6_vitd$il_6_nolim_screen))
 
 
-form = as.formula(log(il_6_nolim) ~ rand*time + stratification + 
-                    log(il_6_nolim_screen) + (1|study_id))
+# form = as.formula(log(il_6_nolim) ~ rand*time + stratification + 
+#                     log(il_6_nolim_screen) + (1|study_id))
+# 
+# # df_il_6 = fit_lmer(form, df= mh_il6_vitd, label = "IL-6 (no limits)")
+# 
+# 
+# fit_il6 <- lmer(formula = log(il_6_nolim) ~ rand*time + stratification + 
+#                   log(il_6_nolim_screen) + (1|study_id),
+#                 data = mh_il6_vitd) 
+# 
+# 
+# 
+# 
+# # hist(residuals(fit_il6))
+# # summary(fit_il6)$coefficients
+# # anova(fit_il6)
+# (p <- summary(pairs(emmeans(fit_il6, ~ rand * time ), 
+#                     simple="rand")))  #contrasts PINK - BLUE i.e. 1000 - 500
+# 
+# 
+# estimate3<-as.numeric(p[1,"estimate"])  #estimate  at 6 weeks
+# se3<-as.numeric(p[1,"SE"]) #se at 6 weeks
+# p3 <-format.pval(p[1,"p.value"], eps=0.001,2)
+# 
+# estimate6<-as.numeric(p[2,"estimate"])  #estimate at 12m
+# se6<-as.numeric(p[2,"SE"]) #se at 12m
+# p6 <-format.pval(p[2,"p.value"], eps=0.001,2)
+# 
+# time=c("6 weeks", "12 months")
+# estimate = rbind(estimate3,estimate6)
+# se=rbind(se3,se6)
+# p=rbind(p3,p6)
+# 
+# df_il_6 = data.frame(Outcome = c("IL-6",""),
+#                      Contrast = c("500mg vs 1000mg",""), 
+#                      Level=time, Estimate = exp(-estimate), 
+#                      lower = exp(-estimate - 1.96*se),
+#                      upper = exp(-estimate + 1.96*se),
+#                      se = se, p=p)
+# 
+# rownames(df_il_6) <- c()
 
-# df_il_6 = fit_lmer(form, df= mh_il6_vitd, label = "IL-6 (no limits)")
+df_25ohd2 = lmer_nolim(x25ohd2fu, "25(OH)D2", x25ohd2_screen, 
+                       mh_il6_vitd, limit=3.0)
 
+df_25ohd3 = lmer_nolim(x25ohd3fu, "25(OH)D3", x25ohd3_screen, 
+                       mh_il6_vitd, limit=0)
 
-fit_il6 <- lmer(formula = log(il_6_nolim) ~ rand*time + stratification + 
-                  log(il_6_nolim_screen) + (1|study_id),
-                data = mh_il6_vitd) 
-
-
-
-
-# hist(residuals(fit_il6))
-# summary(fit_il6)$coefficients
-# anova(fit_il6)
-(p <- summary(pairs(emmeans(fit_il6, ~ rand * time ), 
-                    simple="rand")))  #contrasts PINK - BLUE i.e. 1000 - 500
-
-
-estimate3<-as.numeric(p[1,"estimate"])  #estimate  at 6 weeks
-se3<-as.numeric(p[1,"SE"]) #se at 6 weeks
-p3 <-format.pval(p[1,"p.value"], eps=0.001,2)
-
-estimate6<-as.numeric(p[2,"estimate"])  #estimate at 12m
-se6<-as.numeric(p[2,"SE"]) #se at 12m
-p6 <-format.pval(p[2,"p.value"], eps=0.001,2)
-
-time=c("6 weeks", "12 months")
-estimate = rbind(estimate3,estimate6)
-se=rbind(se3,se6)
-p=rbind(p3,p6)
-
-df_il_6 = data.frame(Outcome = c("IL-6",""),
-                     Contrast = c("500mg vs 1000mg",""), 
-                     Level=time, Estimate = exp(-estimate), 
-                     lower = exp(-estimate - 1.96*se),
-                     upper = exp(-estimate + 1.96*se),
-                     se = se, p=p)
-
-rownames(df_il_6) <- c()
-
-
+df_epi25ohd3 = lmer_nolim(epi25ohd3fu, "Epi25(OH)D3", epi25ohd3_screen, 
+                          mh_il6_vitd, limit=2.0)
+df_il_6 = lmer_nolim(il_6, "IL-6", il_6_screen, mh_il6_vitd, 0.2)
 
 
 # ---- tobit ----
 #https://stats.stackexchange.com/questions/581866/how-to-do-post-hoc-analysis-with-contrasts-of-a-tobit-model-censreg-package
 # https://stats.stackexchange.com/questions/624699/post-hoc-analysis-for-tobit-model-using-censreg-in-r
 
-
+#set up data for tobit regression
+#Epi 25(OH)D3 lower limit is 2.0
+# 25(OH)D2 lower limit is 3.0
+# IL-6 lower limit is 0.2
 
 pmh <- pdata.frame(mh_il6_vitd %>% 
                      arrange(id, time)
@@ -230,20 +240,9 @@ pmh <- pdata.frame(mh_il6_vitd %>%
 # summary(mh_il6_vitd$epi25ohd3_screen_cens)
 # hist(log(mh_il6_vitd$epi25ohd3fu_cens))
 
-form = as.formula(log(epi25ohd3fu_cens) ~ rand*time + stratification + log(epi25ohd3_screen_cens) )
-
-df_epi25ohd3_cens = fit_censreg(form, pmh, leftlim = log(2), 
-                                label = "Epi25(OH)D3 (Censored)")
 
 
-#Epi 25(OH)D3 lower limit is 2.0
-# 25(OH)D2 lower limit is 3.0
-# IL-6 lower limit is 0.2
-
-
-#set up data
-# summary(mh_il6_vitd$x25ohd2fu)
-# hist(mh_il6_vitd$x25ohd2fu)
+# 25(OH)D2
 
 form = as.formula(log(x25ohd2fu_cens) ~ rand*time + stratification + log(x25ohd2_screen_cens)) 
 
@@ -251,9 +250,14 @@ df_25ohd2_cens = fit_censreg(form, pmh, leftlim = log(3),
                              label = "25(OH)D2 (Censored)")
 
 
-#Epi 25(OH)D3 lower limit is 2.0
-# 25(OH)D2 lower limit is 3.0
-# IL-6 lower limit is 0.2
+
+# Epi 25(OH)D3
+form = as.formula(log(epi25ohd3fu_cens) ~ rand*time + stratification + log(epi25ohd3_screen_cens) )
+
+df_epi25ohd3_cens = fit_censreg(form, pmh, leftlim = log(2), 
+                                label = "Epi25(OH)D3 (Censored)")
+
+
 
 # hist(mh_il6_vitd$il_6)
 
@@ -267,8 +271,9 @@ df_il_6_cens = fit_censreg(form, pmh, leftlim = log(0.2),
 # ---- tab_comb ----
 ##combine
 
-tab_cens <- bind_rows(df_25ohd2_cens, 
-                      df_epi25ohd3_cens, df_25ohd3, 
+tab_cens <- bind_rows(df_25ohd2, df_25ohd2_cens, 
+                      df_epi25ohd3, df_epi25ohd3_cens,
+                      df_25ohd3, 
                       df_il_6,df_il_6_cens) %>%
   mutate(
     est_ci = paste0(round(Estimate, 2), " (",
