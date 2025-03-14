@@ -14,6 +14,56 @@ library(flextable)
 
 load(file="mh_il6_vitd.rds" )
 
+
+##mediator
+
+dat <- mh_il6_vitd %>%
+   dplyr::select(study_id, rand, time, stratification, age, income,
+          education_years, x25ohd3fu, x25ohd3_screen,
+          mh_hamd_dep, bl_mh_hamd_dep) %>%
+  na.omit()
+
+table(dat$rand, dat$time)
+
+
+mform = formula(log(x25ohd3fu) ~ rand*time + stratification + age + income + 
+                  education_years + log(x25ohd3_screen) +
+                 (1|study_id))
+
+
+fit_25ohd3 <- lmer(formula = form, data = dat)
+
+# outcome
+outform = formula(mh_hamd_dep ~ rand*time + stratification + age + income + 
+                        education_years + bl_mh_hamd_dep + log(x25ohd3fu) +
+                    (1|study_id)) 
+
+
+outfit <- lmer(formula = outform, data = dat)
+
+
+##mediation
+contcont <- mediate(fit_25ohd3, outfit, sims=50, treat="rand", 
+                    mediator="log(x25ohd3fu)")
+summary(contcont)
+plot(contcont)
+
+
+##from example
+b <- lm(job_seek ~ treat + econ_hard + sex + age, data=jobs)
+c <- lm(depress2 ~ treat + job_seek + econ_hard + sex + age, data=jobs)
+
+# Estimation via quasi-Bayesian approximation
+contcont <- mediate(b, c, sims=50, treat="treat", mediator="job_seek")
+summary(contcont)
+plot(contcont)
+
+
+
+
+
+
+
 #---- lmer_mh_cumdose ----
 #### MH outcomes
 

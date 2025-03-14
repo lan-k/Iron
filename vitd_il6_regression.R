@@ -90,7 +90,7 @@ desc_wide <-bind_rows(base_desc_wide, desc_wide)
 #                     x25ohd3_PINK = "25(OH)D3, \n1000mg"
 #                     ) %>%
 #   set_caption(caption = "Biomarkers (mean (SD))")
-
+# 
 
 
 # ---- lmer_25ohd3_il_6 ----
@@ -117,7 +117,12 @@ mh_il6_vitd <- mh_il6_vitd %>%
          x25ohd2fu_cens= ifelse(x25ohd2fu == 2.99, 3, x25ohd2fu),
          x25ohd2_screen_cens = ifelse(x25ohd2_screen == 2.99, 3*runif(1), x25ohd2_screen),
          il_6_nolim = ifelse(il_6 == 0.2, 0.2*runif(1),il_6),
-         il_6_nolim_screen = ifelse(il_6_screen == 0.2, 0.2*runif(1),il_6_screen)) 
+         il_6_nolim_screen = ifelse(il_6_screen == 0.2, 0.2*runif(1),il_6_screen),
+         x25ohd3_change = x25ohd3fu - x25ohd3_screen) 
+
+
+
+
 # summary(mh_il6_vitd$x25ohd2fu)
 # hist(mh_il6_vitd$x25ohd2fu)
 
@@ -127,14 +132,14 @@ mh_il6_vitd <- mh_il6_vitd %>%
 #                  (1|study_id))
 # 
 # 
-# fit_25ohd3 <- lmer(formula = form, data = mh_il6_vitd) 
-# summary(fit_25ohd3) 
+# fit_25ohd3 <- lmer(formula = form, data = mh_il6_vitd)
+# summary(fit_25ohd3)
 # 
 # 
 # # anova(fit_25ohd3)
-# (p <- summary(pairs(emmeans(fit_25ohd3, ~ rand * time ), 
+# (p <- summary(pairs(emmeans(fit_25ohd3, ~ rand * time ),
 #                     simple="rand")))  #contrasts PINK - BLUE i.e. 1000 - 500
-# 
+# lsmeans(fit_25ohd3, ~ rand * time)
 # 
 # estimate3<-as.numeric(p[1,"estimate"])  #estimate  at 6 weeks
 # se3<-as.numeric(p[1,"SE"]) #se at 6 weeks
@@ -157,6 +162,11 @@ mh_il6_vitd <- mh_il6_vitd %>%
 #                        se = se, p=p)
 # 
 # rownames(df_25ohd3) <- c()
+
+# change from baseline
+# fit_change = lmer(x25ohd3_change ~ rand*time + stratification + log(x25ohd3_screen) +
+#                     (1|study_id),data = mh_il6_vitd)
+# emmeans(fit_change, ~ rand * time)
 
 
 # il_6 using a random number between 0 and 0.2 for detection limit
