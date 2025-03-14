@@ -1,13 +1,14 @@
 ##mediation analysis of MH EPDS and HAMD with biomarkers
+## BLUE = = 500 mg, PINK 1000 mg
 #---- get_data ----
 
 rm(list=ls())
 library(dplyr)
 library(tidyr)
 library(stringr)
-library(mediate)
-library(lme4)
+library(mediation)
 library(lmerTest)
+library(lme4)
 library(emmeans)
 library(splines)
 library(flextable)
@@ -21,30 +22,32 @@ dat <- mh_il6_vitd %>%
    dplyr::select(study_id, rand, time, stratification, age, income,
           education_years, x25ohd3fu, x25ohd3_screen,
           mh_hamd_dep, bl_mh_hamd_dep) %>%
-  na.omit()
+  na.omit() %>%
+  mutate(treat = factor(ifelse(rand == "BLUE", 0 ,1 )))
 
 table(dat$rand, dat$time)
 
 
-mform = formula(log(x25ohd3fu) ~ rand*time + stratification + age + income + 
-                  education_years + log(x25ohd3_screen) +
+mform = formula(x25ohd3fu ~ treat*time + stratification + age + income + 
+                  education_years + x25ohd3_screen +
                  (1|study_id))
 
 
-fit_25ohd3 <- lmer(formula = form, data = dat)
+fit_25ohd3 <- lme4::lmer(formula = mform, data = dat)
+class(fit_25ohd3)
 
 # outcome
-outform = formula(mh_hamd_dep ~ rand*time + stratification + age + income + 
-                        education_years + bl_mh_hamd_dep + log(x25ohd3fu) +
-                    (1|study_id)) 
+outform = formula(mh_hamd_dep ~ treat*time + stratification + age + income + 
+                        education_years + bl_mh_hamd_dep + x25ohd3fu +
+                    x25ohd3_screen + (1|study_id)) 
 
 
-outfit <- lmer(formula = outform, data = dat)
+outfit <- lme4::lmer(formula = outform, data = dat)
 
 
 ##mediation
-contcont <- mediate(fit_25ohd3, outfit, sims=50, treat="rand", 
-                    mediator="log(x25ohd3fu)")
+contcont <- mediate(fit_25ohd3, outfit, sims=500, treat="treat", 
+                    mediator="x25ohd3fu")
 summary(contcont)
 plot(contcont)
 
