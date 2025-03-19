@@ -1,5 +1,7 @@
 ##mediation analysis of MH EPDS and HAMD with biomarkers
 ## BLUE = = 500 mg, PINK 1000 mg
+##MH outcomes are change scores from baseline, treat as continuous with normal dist
+
 #---- get_data ----
 
 rm(list=ls())
@@ -12,58 +14,84 @@ library(lme4)
 library(emmeans)
 library(splines)
 library(flextable)
+library(visdat)
 
 load(file="mh_il6_vitd.rds" )
+source("99_functions.R")
+
+
+mh_il6_vitd <- mh_il6_vitd %>%
+  mutate(treat = factor(ifelse(rand == "BLUE", 1 ,0 )),
+         il_6_nolim = ifelse(il_6 == 0.2, 0.2*runif(1),il_6),
+         il_6_nolim_screen = ifelse(il_6_screen == 0.2, 0.2*runif(1),il_6_screen),
+         log_il6 = log(il_6_nolim),
+         log_il6_screen = log(il_6_nolim_screen))
+
+##check missing data pattern
+
+mh_il6_vitd %>%
+  # group_by(time) %>%
+  dplyr::select(study_id, income,
+                education_years, x25ohd3fu, x25ohd3_screen, il_6, il_6_screen,
+                mh_hamd_dep, bl_mh_hamd_dep,
+                mh_epds, bl_mh_epds)  %>% 
+  visdat::vis_miss()
 
 
 ##mediator
+#results are 500mg - 1000mg at time 2 i.e. 12 months
 
-dat <- mh_il6_vitd %>%
-   dplyr::select(study_id, rand, time, stratification, age, income,
-          education_years, x25ohd3fu, x25ohd3_screen,
-          mh_hamd_dep, bl_mh_hamd_dep) %>%
-  na.omit() %>%
-  mutate(treat = factor(ifelse(rand == "BLUE", 0 ,1 )))
+#### ham_dep
 
-table(dat$rand, dat$time)
+#---- hamd_dep ----
+#  25(oh)d3
 
+hamd_dep_25ohd3 = mh_mediate("mh_hamd_dep", "bl_mh_hamd_dep", 
+                   "x25ohd3fu", "x25ohd3_screen",  nsim = 500)
+summary(hamd_dep_25ohd3)
 
-mform = formula(x25ohd3fu ~ treat*time + stratification + age + income + 
-                  education_years + x25ohd3_screen +
-                 (1|study_id))
+plot(hamd_dep_25ohd3, treatment = "both")
 
+# 25(oh)d3 at 6 weeks only
 
-fit_25ohd3 <- lme4::lmer(formula = mform, data = dat)
-class(fit_25ohd3)
+hamd_dep_25ohd3_fu1 = mh_mediate_lm("mh_hamd_dep", "bl_mh_hamd_dep", 
+                              "x25ohd3fu", "x25ohd3_screen", timept = 1, nsim = 500)
+summary(hamd_dep_25ohd3_fu1)
 
-# outcome
-outform = formula(mh_hamd_dep ~ treat*time + stratification + age + income + 
-                        education_years + bl_mh_hamd_dep + x25ohd3fu +
-                    x25ohd3_screen + (1|study_id)) 
+plot(hamd_dep_25ohd3_fu1, treatment = "both")
 
+## il-6
+hamd_dep_il6 = mh_mediate ("mh_hamd_dep", "bl_mh_hamd_dep", 
+                           "log_il6", "log_il6_screen", nsim = 500)
 
-outfit <- lme4::lmer(formula = outform, data = dat)
+summary(hamd_dep_il6)
+plot(hamd_dep_il6)
 
+#---- epds ----
+# 25(oh)d3
 
-##mediation
-contcont <- mediate(fit_25ohd3, outfit, sims=500, treat="treat", 
-                    mediator="x25ohd3fu")
-summary(contcont)
-plot(contcont)
-
-
-##from example
-b <- lm(job_seek ~ treat + econ_hard + sex + age, data=jobs)
-c <- lm(depress2 ~ treat + job_seek + econ_hard + sex + age, data=jobs)
-
-# Estimation via quasi-Bayesian approximation
-contcont <- mediate(b, c, sims=50, treat="treat", mediator="job_seek")
-summary(contcont)
-plot(contcont)
+epds_25ohd3 = mh_mediate ("mh_epds", "bl_mh_epds", 
+                           "x25ohd3fu", "x25ohd3_screen", nsim = 500)
+summary(epds_25ohd3)
+plot(epds_25ohd3)
 
 
+# 6 weeks only
+
+epds_25ohd3_fu1 = mh_mediate_lm("mh_epds", "bl_mh_epds", 
+                                    "x25ohd3fu", "x25ohd3_screen", timept = 1, nsim = 500)
+summary(epds_25ohd3_fu1)
+
+plot(epds_25ohd3_fu1)
 
 
+## il-6
+
+epds_il6 = mh_mediate ("mh_epds", "bl_mh_epds", 
+                       "log_il6", "log_il6_screen", nsim = 500)
+
+summary(epds_il6)
+plot(epds_il6)
 
 
 

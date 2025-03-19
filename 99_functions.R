@@ -182,3 +182,67 @@ lmer_nolim = function(outcome, outlab, screen, df, limit) {
   return(out_df)
   
 }
+
+mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
+                       df = mh_il6_vitd,
+                        nsim = 500) {
+  dat <- df %>%
+    dplyr::select(study_id, treat, time, stratification, age, income,
+                  education_years,
+                   all_of(c(outcome, outcome_base, 
+                  mediator, mediator_base ))) %>%
+    na.omit() 
+  
+  
+  base_form = "treat* time + stratification + age + income + education_years + (1|study_id)"
+  mform = formula(paste0(mediator,"~", mediator_base, "+", base_form))
+  
+  
+  fit_med <- lme4::lmer(formula = mform, data = dat)
+  
+  # outcome
+  outform = formula(paste0(outcome, "~ ", base_form, "+",
+                    paste(c(outcome_base, mediator, mediator_base), collapse="+") ) )
+  
+  
+  outfit <- lme4::lmer(formula = outform, data = dat)
+  
+  
+  ##mediation
+  contcont <- mediate(fit_med, outfit, sims=nsim, treat="treat", 
+                      mediator=mediator, group.out = "study_id")
+  return(contcont)
+}
+
+
+mh_mediate_lm = function(outcome, outcome_base, mediator, mediator_base,
+                         df= mh_il6_vitd , timept = 1,
+                      nsim = 500) {
+  dat <- df %>%
+    filter(time==timept) %>%
+    dplyr::select(study_id, time, treat, stratification, age, income,
+                  education_years,
+                  all_of(c(outcome, outcome_base, 
+                           mediator, mediator_base ))) %>%
+    na.omit() 
+  
+  
+  base_form = "treat + stratification + age + income + education_years "
+  mform = formula(paste0(mediator,"~", mediator_base, "+", base_form))
+  
+  
+  fit_med <- lm(formula = mform, data = dat)
+  
+  # outcome
+  outform = formula(paste0(outcome, "~ ", base_form, "+",
+                           paste(c(outcome_base, mediator, mediator_base), collapse="+") ) )
+  
+  
+  outfit <- lm(formula = outform, data = dat)
+  
+  
+  ##mediation
+  contcont <- mediate(fit_med, outfit, sims=nsim, treat="treat", 
+                      mediator=mediator)
+  return(contcont)
+}
