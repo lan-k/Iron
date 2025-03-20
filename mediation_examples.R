@@ -279,3 +279,44 @@ direct.model <- glm(workdays ~ diabetes, data = hc2021p, family = gaussian(link 
 round(cbind(coef(direct.model), confint(direct.model)), 3)
 
 tbl_regression(direct.model, estimate_fun = ~ style_number(.x, digits = 3))
+
+
+indirect.model1 <- glm(as.numeric(health_status) ~ diabetes, data = hc2021p, family = gaussian(link = "identity")) ## We need to convert the `health_status` variable to numeric to make sense of the linear regression model.
+round(cbind(coef(indirect.model1), confint(indirect.model1)), 3)
+
+tbl_regression(indirect.model1, estimate_fun = ~ style_number(.x, digits = 3))
+
+indirect.model2 <- glm(workdays ~ diabetes + as.numeric(health_status), data = hc2021p, family = gaussian(link = "identity"))
+round(cbind(coef(indirect.model2), confint(indirect.model2)), 3)
+
+tbl_regression(indirect.model2, estimate_fun = ~ style_number(.x, digits = 3))
+
+
+t1 <- tbl_regression(direct.model, estimate_fun = ~ style_number(.x, digits = 3)) %>% modify_column_hide(columns = p.value) %>% modify_column_hide(ci)
+t2 <- tbl_regression(indirect.model1, estimate_fun = ~ style_number(.x, digits = 3)) %>% modify_column_hide(columns = p.value) %>% modify_column_hide(ci)
+t3 <- tbl_regression(indirect.model2, estimate_fun = ~ style_number(.x, digits = 3)) %>% modify_column_hide(columns = p.value) %>% modify_column_hide(ci)
+
+tbl_merge(
+  tbls = list(t1, t2, t3),
+  tab_spanner = c("**Total effect**", "**First-part indirect effect**", "**Second-part direct + indirect effects**")
+)
+
+
+## mediation.test(mv,iv,dv), where mv is the mediator variable, 
+# iv is the independent varible, and dv is the dependent variable)
+mediation <- mediation.test(as.numeric(hc2021p$health_status), hc2021p$diabetes, hc2021p$workdays)
+
+
+## Note: We have to convert health_status to a numeric since errors will occur when using it as a factor.
+hc2021p$health_status <- as.numeric(hc2021p$health_status)
+
+## First-part indirect effect model:
+indirect.model1 <- glm(health_status ~ diabetes, data = hc2021p, family = gaussian(link = "identity"))
+
+## Second-part direct + indirect effect model:
+indirect.model2 <- glm(workdays ~ diabetes + health_status, data = hc2021p, family = gaussian(link = "identity"))
+
+## Mediation analysis with 1000 simulations
+mediation.results <- mediate(indirect.model1, indirect.model2, treat = 'diabetes', mediator = 'health_status', boot = TRUE, sims = 1000)
+summary(mediation.results)
+round(mediation, 3)

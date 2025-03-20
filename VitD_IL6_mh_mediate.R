@@ -52,6 +52,9 @@ summary(hamd_dep_25ohd3)
 
 plot(hamd_dep_25ohd3, treatment = "both")
 
+
+
+
 # 25(oh)d3 at 6 weeks only
 
 hamd_dep_25ohd3_fu1 = mh_mediate_lm("mh_hamd_dep", "bl_mh_hamd_dep", 
@@ -60,12 +63,41 @@ summary(hamd_dep_25ohd3_fu1)
 
 plot(hamd_dep_25ohd3_fu1, treatment = "both")
 
+#sensitivity, only available for one time point
+sens.cont <- medsens(hamd_dep_25ohd3_fu1, rho.by=.1, eps=.01, effect.type="both")
+
+# Use summary function to display results
+summary(sens.cont)
+
+# Plot true ACMEs and ADEs as functions of rho
+par.orig <- par(mfrow = c(2,1))
+plot(sens.cont,  ylim=c(-.2,.2))
+
+
 ## il-6
 hamd_dep_il6 = mh_mediate ("mh_hamd_dep", "bl_mh_hamd_dep", 
                            "log_il6", "log_il6_screen", nsim = 500)
 
 summary(hamd_dep_il6)
 plot(hamd_dep_il6)
+
+
+## il-6, 6 weeks only
+hamd_dep_il6_fu1 = mh_mediate_lm("mh_hamd_dep", "bl_mh_hamd_dep", 
+                           "log_il6", "log_il6_screen", timept = 1, nsim = 500)
+
+summary(hamd_dep_il6_fu1)
+plot(hamd_dep_il6_fu1)
+
+sens.cont_il6 <- medsens(hamd_dep_il6_fu1, rho.by=.1, eps=.01, effect.type="both")
+
+# Use summary function to display results
+summary(sens.cont_il6)
+
+# Plot true ACMEs and ADEs as functions of rho
+plot(sens.cont_il6,  ylim=c(-.2,.2))
+
+par(mfrow = c(1,1))
 
 #---- epds ----
 # 25(oh)d3

@@ -386,7 +386,7 @@ MH_cumdose <- function(outvar, exposure = "cumdose",
                        adjvars = c("Age","income","Education_years"),
                        basevar = NULL, exp = F) {
   
-  form = formula(paste0(outvar, " ~",  exposure,"  + " , paste(adjvars, collapse = "+"),
+  form = formula(paste0(outvar, " ~",  exposure,"  + time + " , paste(adjvars, collapse = "+"),
                  "+ (1|Study_ID) +",basevar) )
     
   fit <- lmer(formula = form,data = mh)
