@@ -246,3 +246,55 @@ mh_mediate_lm = function(outcome, outcome_base, mediator, mediator_base,
                       mediator=mediator)
   return(contcont)
 }
+
+
+tab_mh_mediate = function(medfit, Outcome = NULL, mediator = NULL) {
+  
+  s = summary(medfit)
+  
+  df = data.frame(Outcome = Outcome,
+                  Mediator = mediator,
+                  acme0=s$d0,
+                  acme0_lo = s$d0.ci[1],
+                  acme0_hi = s$d0.ci[2],
+                  acme0_p = s$d0.p,
+                  acme1=s$d1, 
+                  acme1_lo = s$d1.ci[1],
+                  acme1_hi = s$d1.ci[2],
+                  acme1_p = s$d1.p,
+                  acme = s$d.avg,
+                  acme_lo = s$d.avg.ci[1],
+                  acme_hi = s$d.avg.ci[2],
+                  acme_p = s$d.avg.p,
+                  ade0=s$z0,
+                  ade0_lo = s$z0.ci[1],
+                  ade0_hi = s$z0.ci[2],
+                  ade0_p = s$z0.p,
+                  ade1=s$z1,
+                  ade1_lo = s$z1.ci[1],
+                  ade1_hi = s$z1.ci[2],
+                  ade1_p = s$z1.p,
+                  ade=s$z.avg,
+                  ade_lo = s$z.avg.ci[1],
+                  ade_hi = s$z.avg.ci[2],
+                  ade_p = s$z.avg.p,
+                  ate=s$tau.coef,
+                  ate_lo = s$tau.ci[1],
+                  ate_hi = s$tau.ci[2],
+                  ate_p = s$tau.p,
+                  prop_med0 = s$n0,
+                  prop_med0_lo = s$n0.ci[1],
+                  prop_med0_hi = s$n0.ci[2],
+                  prop_med1 = s$n1,
+                  prop_med1_lo = s$n1.ci[1],
+                  prop_med1_hi = s$n1.ci[2],
+                  prop_med = s$n.avg,
+                  prop_med_lo = s$n.avg[1],
+                  prop_med_hi = s$n.avg[2]
+                  )
+  
+  rownames(df) = c()
+  
+  return(df)
+  
+}

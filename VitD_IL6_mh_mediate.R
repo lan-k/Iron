@@ -2,6 +2,8 @@
 ## BLUE = = 500 mg, PINK 1000 mg
 ##MH outcomes are change scores from baseline, treat as continuous with normal dist
 
+#results are 500mg - 1000mg at time 2 i.e. 12 months
+
 #---- get_data ----
 
 rm(list=ls())
@@ -38,19 +40,18 @@ mh_il6_vitd %>%
   visdat::vis_miss()
 
 
-##mediator
-#results are 500mg - 1000mg at time 2 i.e. 12 months
 
-#### ham_dep
 
 #---- hamd_dep ----
-#  25(oh)d3
+#### ham_dep
+##mediator 25(oh)d3
 
 hamd_dep_25ohd3 = mh_mediate("mh_hamd_dep", "bl_mh_hamd_dep", 
                    "x25ohd3fu", "x25ohd3_screen",  nsim = 500)
-summary(hamd_dep_25ohd3)
+df_hamd_dep_25ohd3= tab_mh_mediate(hamd_dep_25ohd3, "HAMD_DEP", "25(OH)D3")
 
-plot(hamd_dep_25ohd3, treatment = "both")
+plot(hamd_dep_25ohd3, treatment = "both", main = "HAMD and 25(OH)D3 over 12 months",
+     xlab = "Difference in HAMD (500mg-1000mg)")
 
 
 
@@ -59,7 +60,11 @@ plot(hamd_dep_25ohd3, treatment = "both")
 
 hamd_dep_25ohd3_fu1 = mh_mediate_lm("mh_hamd_dep", "bl_mh_hamd_dep", 
                               "x25ohd3fu", "x25ohd3_screen", timept = 1, nsim = 500)
-summary(hamd_dep_25ohd3_fu1)
+
+
+df_hamd_dep_25ohd3_fu1= tab_mh_mediate(hamd_dep_25ohd3_fu1, 
+                                   "HAMD_DEP at 6 weeks", "25(OH)D3")
+
 
 plot(hamd_dep_25ohd3_fu1, treatment = "both")
 

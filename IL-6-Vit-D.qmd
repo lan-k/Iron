@@ -41,6 +41,8 @@ In the investigation between post-partum maternal depression, biomarkers and IVI
 
 ```{r}
 #| echo: false
+#| include: false
+#| warning: false
 source("vitd_il6_regression.R")
 ```
 
@@ -184,6 +186,17 @@ tab_cens %>%
                     p="P-value")
 
 
+
+```
+
+# Mediation analysis
+
+```{r}
+#| echo: false
+#| include: false
+#| warning: false
+
+source("VitD_IL6_mh_mediate.R")
 
 ```
 

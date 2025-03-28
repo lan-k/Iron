@@ -1,7 +1,7 @@
 ## mediation using method in https://pubmed.ncbi.nlm.nih.gov/32458988/
 ## web material https://academic.oup.com/aje/article-pdf/189/11/1427/34045752/kwaa092.pdf
 
-First read the data into a matrix/dataframe/vector named mydata
+# First read the data into a matrix/dataframe/vector named mydata
 mydata<-read.csv(file="mentalhealth.csv",header=TRUE,sep=",")
 N<-nrow(mydata)
 #creating an Id variable
@@ -9,7 +9,7 @@ mydata$id<-1:N
 #L0 has five variables hence L01 L02 L03 L04 L05.
 # M1 M2 M3 M4 mediator observed at times 0 1 2 and 3.
 head(mydata, n=10L)
-Data could not be provided due to confidentiality issues.
+# Data could not be provided due to confidentiality issues.
 #We have mediator measured at four time points.
 #To implement the method described in the paper
 #we duplicate the data set twice for each mediator,
