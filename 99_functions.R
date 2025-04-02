@@ -12,6 +12,20 @@ quantile_str <- function(x, probs = c(0.25, 0.5, 0.75), digits=0) {
   return(med_iqr)
 }
 
+
+mean_sd <- function(x,  digits=2) {
+  
+  mean = mean(x, na.rm=T)
+  sd = sd(x, na.rm=T)
+  n=sum(!is.na(x))
+  
+  mean_sd = paste0(as.character(round(mean,digits=digits)), " (", 
+                   as.character(round(sd,digits=digits)), ")",
+                   " (N=",n,")")
+  
+  return(mean_sd)
+}
+
 mean_log <- function(x,  digits=2) {
   
   mean = exp(mean(log(x), na.rm=T))
@@ -191,8 +205,44 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
                   education_years,
                    all_of(c(outcome, outcome_base, 
                   mediator, mediator_base ))) %>%
-    na.omit() 
+    na.omit() %>%
+    mutate(timept=ifelse(as.character(time == "1"), "FU1", "FU2"))
   
+  ##descriptives
+  
+
+  
+  desc = dat %>%
+    group_by(treat, timept) %>%
+    reframe(across(all_of(c(mediator, outcome)), \(x) mean_sd(x, digits=2))) %>% 
+    ungroup()
+  
+
+  base = dat %>%
+    dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
+    mutate(timept = "SCR") %>%
+    group_by(treat, timept) %>%
+    reframe(across(all_of(c( mediator_base, outcome_base)), \(x) mean_sd(x, digits=2))) %>% 
+    ungroup() 
+  
+  
+  colnames(base) = c("treat","timept", mediator, outcome)
+  
+  
+  base_wide = base %>%
+    pivot_wider(names_from = "treat", 
+                values_from = c(mediator, outcome) )
+
+  
+  desc_wide <- desc %>%
+    dplyr::select(treat,timept, all_of(c(mediator, outcome))) %>%
+    pivot_wider(names_from = "treat", 
+                values_from = c(mediator, outcome) )
+  
+  desc_wide = bind_rows(base_wide, desc_wide)
+  
+  
+  #mediation
   
   base_form = "treat* time + stratification + age + income + education_years + (1|study_id)"
   mform = formula(paste0(mediator,"~", mediator_base, "+", base_form))
@@ -211,7 +261,7 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
   ##mediation
   contcont <- mediate(fit_med, outfit, sims=nsim, treat="treat", 
                       mediator=mediator, group.out = "study_id")
-  return(contcont)
+  return(list(desc = desc_wide, medfit = contcont))
 }
 
 
@@ -250,6 +300,7 @@ mh_mediate_lm = function(outcome, outcome_base, mediator, mediator_base,
 
 tab_mh_mediate = function(medfit, Outcome = NULL, mediator = NULL) {
   
+ 
   s = summary(medfit)
   
   df = data.frame(Outcome = Outcome,

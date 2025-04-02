@@ -20,7 +20,17 @@ library(flextable)
 load(file="mh_il6_vitd.rds" )
 source("99_functions.R")
 
-
+mh_il6_vitd %>%
+  # group_by(time) %>%
+  dplyr::select(study_id, income,
+                education_years, 
+                mh_hamd_dep, bl_mh_hamd_dep,
+                mh_epds, bl_mh_epds)  %>% 
+  na.omit() %>% 
+  dplyr::select(study_id, income,
+                education_years, x25ohd3fu, x25ohd3_screen, il_6, il_6_screen,
+                mh_hamd_dep, bl_mh_hamd_dep,
+                mh_epds, bl_mh_epds)
 
 
 
