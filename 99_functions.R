@@ -1,4 +1,10 @@
 ##functions
+roundz = function(x, digits){
+  dformat = paste('%.', digits, 'f', sep='')
+  x = sprintf(dformat, round(x, digits))
+  return(x)
+}
+
 
 quantile_str <- function(x, probs = c(0.25, 0.5, 0.75), digits=0) {
   value = quantile(x, probs, na.rm=T, digits=digits)
@@ -13,11 +19,20 @@ quantile_str <- function(x, probs = c(0.25, 0.5, 0.75), digits=0) {
 }
 
 
-mean_sd <- function(x,  digits=2) {
+mean_sd <- function(x,  digits=2, exp = F) {
   
-  mean = mean(x, na.rm=T)
-  sd = sd(x, na.rm=T)
-  n=sum(!is.na(x))
+  if (exp) {
+    mean = exp(mean(x, na.rm=T))
+    sd = exp(sd(x, na.rm=T))
+    n=sum(!is.na(x))
+    
+  } else {
+    mean = mean(x, na.rm=T)
+    sd = sd(x, na.rm=T)
+    n=sum(!is.na(x))
+    
+  }
+  
   
   mean_sd = paste0(as.character(round(mean,digits=digits)), " (", 
                    as.character(round(sd,digits=digits)), ")",
@@ -39,7 +54,11 @@ mean_log <- function(x,  digits=2) {
   return(mean_sd)
 }
 
-
+est_ci = function(est, ci, digits=2) {
+  return(paste0(roundz(est, digits), " (",
+                roundz(ci[1], digits), ", ",
+                roundz(ci[2], digits), ")"))
+}
 
 fit_censreg = function(form, df, leftlim = -Inf, rightlim = Inf,
                        label = "") {
@@ -198,7 +217,7 @@ lmer_nolim = function(outcome, outlab, screen, df, limit) {
 }
 
 mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
-                       df = mh_il6_vitd,
+                       df = mh_il6_vitd, timept = NULL,exp=F,
                         nsim = 500) {
   dat <- df %>%
     dplyr::select(study_id, treat, time, stratification, age, income,
@@ -209,21 +228,41 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
     mutate(timept=ifelse(as.character(time == "1"), "FU1", "FU2"))
   
   ##descriptives
-  
+  if (exp) {
+    
+    desc = dat %>%
+      group_by(treat, timept) %>%
+      reframe(across(all_of(c(mediator, outcome)), \(x) mean_sd(x, digits=2, exp=T))) %>% 
+      ungroup()
+    
+    
+    base = dat %>%
+      dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
+      mutate(timept = "SCR") %>%
+      group_by(treat, timept) %>%
+      reframe(across(all_of(c( mediator_base)), \(x) mean_sd(x, digits=2, exp=T)),
+              across(all_of(c( outcome_base)), \(x) mean_sd(x, digits=2, exp=F))) %>% 
+      ungroup() 
+    
+    
+  } else {
+    
+    desc = dat %>%
+      group_by(treat, timept) %>%
+      reframe(across(all_of(c(mediator, outcome)), \(x) mean_sd(x, digits=2))) %>% 
+      ungroup()
+    
+    
+    base = dat %>%
+      dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
+      mutate(timept = "SCR") %>%
+      group_by(treat, timept) %>%
+      reframe(across(all_of(c( mediator_base, outcome_base)), \(x) mean_sd(x, digits=2))) %>% 
+      ungroup() 
+    
+    
+  }
 
-  
-  desc = dat %>%
-    group_by(treat, timept) %>%
-    reframe(across(all_of(c(mediator, outcome)), \(x) mean_sd(x, digits=2))) %>% 
-    ungroup()
-  
-
-  base = dat %>%
-    dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
-    mutate(timept = "SCR") %>%
-    group_by(treat, timept) %>%
-    reframe(across(all_of(c( mediator_base, outcome_base)), \(x) mean_sd(x, digits=2))) %>% 
-    ungroup() 
   
   
   colnames(base) = c("treat","timept", mediator, outcome)
@@ -259,8 +298,15 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
   
   
   ##mediation
-  contcont <- mediate(fit_med, outfit, sims=nsim, treat="treat", 
-                      mediator=mediator, group.out = "study_id")
+  if (!is.null(timept)) {
+    contcont <- mediate(fit_med, outfit, sims=nsim, treat="treat", 
+                        mediator=mediator, group.out = "study_id",  
+                        covariates = list(time = timept))
+  } else {
+    contcont <- mediate(fit_med, outfit, sims=nsim, treat="treat", 
+                        mediator=mediator, group.out = "study_id")
+  }
+  
   return(list(desc = desc_wide, medfit = contcont))
 }
 
@@ -305,43 +351,23 @@ tab_mh_mediate = function(medfit, Outcome = NULL, mediator = NULL) {
   
   df = data.frame(Outcome = Outcome,
                   Mediator = mediator,
-                  acme0=s$d0,
-                  acme0_lo = s$d0.ci[1],
-                  acme0_hi = s$d0.ci[2],
-                  acme0_p = s$d0.p,
-                  acme1=s$d1, 
-                  acme1_lo = s$d1.ci[1],
-                  acme1_hi = s$d1.ci[2],
-                  acme1_p = s$d1.p,
-                  acme = s$d.avg,
-                  acme_lo = s$d.avg.ci[1],
-                  acme_hi = s$d.avg.ci[2],
-                  acme_p = s$d.avg.p,
-                  ade0=s$z0,
-                  ade0_lo = s$z0.ci[1],
-                  ade0_hi = s$z0.ci[2],
-                  ade0_p = s$z0.p,
-                  ade1=s$z1,
-                  ade1_lo = s$z1.ci[1],
-                  ade1_hi = s$z1.ci[2],
-                  ade1_p = s$z1.p,
-                  ade=s$z.avg,
-                  ade_lo = s$z.avg.ci[1],
-                  ade_hi = s$z.avg.ci[2],
-                  ade_p = s$z.avg.p,
-                  ate=s$tau.coef,
-                  ate_lo = s$tau.ci[1],
-                  ate_hi = s$tau.ci[2],
-                  ate_p = s$tau.p,
-                  prop_med0 = s$n0,
-                  prop_med0_lo = s$n0.ci[1],
-                  prop_med0_hi = s$n0.ci[2],
-                  prop_med1 = s$n1,
-                  prop_med1_lo = s$n1.ci[1],
-                  prop_med1_hi = s$n1.ci[2],
-                  prop_med = s$n.avg,
-                  prop_med_lo = s$n.avg[1],
-                  prop_med_hi = s$n.avg[2]
+                  acme0=est_ci(s$d0, s$d0.ci),
+                  acme0_p = format.pval(s$d0.p, eps=0.001, digits=2),
+                  acme1=est_ci(s$d1,s$d1.ci), 
+                  acme1_p = format.pval(s$d1.p, eps=0.001, digits=2),
+                  acme = est_ci(s$d.avg,s$d.avg.ci),
+                  acme_p = format.pval(s$d.avg.p, eps=0.001, digits=2),
+                  ade0=est_ci(s$z0,s$z0.ci),
+                  ade0_p = format.pval(s$z0.p, eps=0.001, digits=2),
+                  ade1=est_ci(s$z1,s$z1.ci),
+                  ade1_p = format.pval(s$z1.p, eps=0.001, digits=2),
+                  ade=est_ci(s$z.avg,s$z.avg.ci),
+                  ade_p = format.pval(s$z.avg.p, eps=0.001, digits=2),
+                  ate=est_ci(s$tau.coef,s$tau.ci),
+                  ate_p = format.pval(s$tau.p, eps=0.001, digits=2),
+                  prop_med0 = est_ci(s$n0,s$n0.ci,digits=3),
+                  prop_med1 = est_ci(s$n1,s$n1.ci,digits=3),
+                  prop_med = est_ci(s$n.avg,s$n.avg.ci,digits=3)
                   )
   
   rownames(df) = c()
@@ -349,3 +375,4 @@ tab_mh_mediate = function(medfit, Outcome = NULL, mediator = NULL) {
   return(df)
   
 }
+

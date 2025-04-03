@@ -29,7 +29,7 @@ Estimates from both models were back-transformed to produced geometric mean rate
 
 ## Maternal depression
 
-In the investigation between post-partum maternal depression, biomarkers and IVI treatmetn during pregnancy, biomarkers are treated as a mediator. Some fo the effect of IVI treatment acts directly on maternal depression (the "direct effect"), while the "indirect effect" acts through the biomarkers. However, existing sofware for mediation analysis, such as the R software package 'mediation', can only account for lower limits of detection in the **outcome** (maternal depression in this analysis) but not the **mediator** (biomarkers).
+In the investigation between post-partum maternal depression, biomarkers and IVI treatmetn during pregnancy, biomarkers are treated as a mediator. Some fo the effect of IVI treatment acts directly on maternal depression (the "direct effect"), while the "indirect effect" acts through the biomarkers. However, existing sofware for mediation analysis, such as the R software package 'mediation' [@tingley2014], can only account for lower limits of detection in the **outcome** (maternal depression in this analysis) but not the **mediator** (biomarkers).
 
 \newpage
 
@@ -199,6 +199,168 @@ tab_cens %>%
 source("VitD_IL6_mh_mediate.R")
 
 ```
+
+## 25(OH)D3
+
+## HAM-D
+
+### Descriptive Statistics
+
+Descriptive Statistics for 25(OH)D3, HMAD and EPDS at screening, 6 weeks and 12 months, inclduing only participants without missing data for any of the three variables.
+
+### 25(OH)D3
+
+```{r}
+#| label: tbl-hamd-25ohd3-desc
+#| tbl-cap: "Mean (SD) for 25(OH)D3 and HAM-D at screening (baseline), 6 weeks and 12 months. HAMD at 6 weeks and 12 months is change from baseline."
+
+hamd_dep_25ohd3_fu1$desc %>%
+  dplyr::select(timept, x25ohd3fu_1, x25ohd3fu_0, 
+                mh_hamd_dep_1, mh_hamd_dep_0) %>%
+  flextable %>%
+  autofit() %>%
+  theme_box() %>%
+  set_header_labels(timept = "Time point",
+                    x25ohd3fu_0="25(OH)D3, \n1000mg",
+                    x25ohd3fu_1="25(OH)D3, \n500mg",
+                    mh_hamd_dep_0="HAM-D, \n1000mg",
+                    mh_hamd_dep_1="HAM-D, \n500mg"
+                    ) %>%
+  footnote(i=c(2,3,2,3), j=c(4,4,5,5),
+           value = as_paragraph("Change from baseline"),
+  ref_symbols = "*",
+  part = "body",
+  inline = T,
+  sep = "")
+
+```
+
+```{r}
+#| label: tbl-epds-25ohd3-desc
+#| tbl-cap: "Mean (SD) for 25(OH)D3 and EPDS at screening (baseline), 6 weeks and 12 months. EPDS at 6 weeks and 12 months is change from baseline."
+
+epds_25ohd3_fu1$desc %>%
+  dplyr::select(timept, x25ohd3fu_1, x25ohd3fu_0, 
+                mh_epds_1, mh_epds_0) %>%
+  flextable %>%
+  autofit() %>%
+  theme_box() %>%
+  set_header_labels(timept = "Time point",
+                    x25ohd3fu_0="25(OH)D3, \n1000mg",
+                    x25ohd3fu_1="25(OH)D3, \n500mg",
+                    mh_epds_0="EPDS, \n1000mg",
+                    mh_epds_1="EPDS, \n500mg"
+                    ) %>%
+  footnote(i=c(2,3,2,3), j=c(4,4,5,5),
+           value = as_paragraph("Change from baseline"),
+  ref_symbols = "*",
+  part = "body",
+  inline = T,
+  sep = "")
+```
+
+```{r}
+#| label: tbl-hamd-il6-desc
+#| tbl-cap: "Mean (SD) for IL-6 and HAM-D at screening (baseline), 6 weeks and 12 months. HAMD at 6 weeks and 12 months is change from baseline."
+
+hamd_dep_il6_fu1$desc %>%
+  dplyr::select(timept, log_il6_1, log_il6_0, 
+                mh_hamd_dep_1, mh_hamd_dep_0) %>%
+  flextable %>%
+  autofit() %>%
+  theme_box() %>%
+  set_header_labels(timept = "Time point",
+                    log_il6_0="IL-6, \n1000mg",
+                    log_il6_1="IL-6, \n500mg",
+                    mh_hamd_dep_0="HAM-D, \n1000mg",
+                    mh_hamd_dep_1="HAM-D, \n500mg"
+                    ) %>%
+  footnote(i=c(2,3,2,3), j=c(4,4,5,5),
+           value = as_paragraph("Change from baseline"),
+  ref_symbols = "*",
+  part = "body",
+  inline = T,
+  sep = "")
+
+```
+
+```{r}
+#| label: label: tbl-epds-il6-desc
+#| tbl-cap: "Mean (SD) for IL-6 and EPDS at screening (baseline), 6 weeks and 12 months. EPDS at 6 weeks and 12 months is change from baseline."
+
+epds_il6_fu1$desc %>%
+  dplyr::select(timept, log_il6_1, log_il6_0, 
+                mh_epds_1, mh_epds_0) %>%
+  flextable %>%
+  autofit() %>%
+  theme_box() %>%
+  set_header_labels(timept = "Time point",
+                    log_il6_0="IL-6, \n1000mg",
+                    log_il6_1="IL-6, \n500mg",
+                    mh_epds_0="EPDS, \n1000mg",
+                    mh_epds_1="EPDS, \n500mg"
+                    ) %>%
+  footnote(i=c(2,3,2,3), j=c(4,4,5,5),
+           value = as_paragraph("Change from baseline"),
+  ref_symbols = "*",
+  part = "body",
+  inline = T,
+  sep = "")
+
+```
+
+### Mediation Results
+
+```{r}
+#| label: tbl-med-results
+
+tab_med = bind_rows(df_hamd_dep_25ohd3, df_epds_25ohd3,
+                    df_hamd_dep_il6, df_epds_il6)
+
+tab_med = tab_med %>%
+  dplyr::select(Outcome, Mediator, timept, acme, acme_p,
+                ade, ade_p, ate, ate_p,
+                prop_med)
+
+tab_med %>%
+  flextable %>%
+  autofit() %>%
+  theme_box() %>%
+  set_header_labels(timept = "Time point",
+                    acme = "ACME", 
+                    acme_p = "ACME, p-value",
+                    ade = "ADE", 
+                    ade_p = "ADE, p-value", 
+                    ate = "Total effect", 
+                    ate_p = "Total effect, p-value",
+                    prop_med = "Proportion mediated") 
+
+```
+
+There was a significant difference in the total effect and average direct effect (ADE) between the 500mg and 100mg groups on HAM-D. However, there was no significant average causal mediation effect (ACME) from 25(OH)D3 on HAMD at 6 weeks or over 12 months.
+
+```{r}
+#| label: fig-il6
+#| fig-height: 8
+#| fig-cap: "Average Causal Mediation Effect (ACME), Average Direct Effect (ADE) and Total Effect for HAM-D mediated by 25(OH)D3"
+
+par(mfrow = c(2,1))
+
+plot(hamd_dep_25ohd3_fu1$medfit,  main = "6 weeks",xlim = c(-4,1),
+    treatment = "treated",
+     # labels  =c("Indirect","Direct" ,"Total"),
+     xlab = "Change in HAM-D from baseline (500mg-1000mg)")
+
+plot(hamd_dep_25ohd3_fu2$medfit,  main = "12 months",xlim = c(-4,1),
+    treatment = "treated",
+     #labels  =c("Indirect","Direct" ,"Total"), 
+     xlab = "Change in HAM-D from baseline (500mg-1000mg)")
+
+
+
+```
+
+## IL-6
 
 # Discussion
 
