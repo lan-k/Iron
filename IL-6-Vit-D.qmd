@@ -4,6 +4,7 @@ author: "Lan Kelly"
 engine: knitr
 format: 
   docx: default
+  html: default
 editor: visual
 date: "`r Sys.Date()`"
 execute: 
@@ -13,7 +14,7 @@ bibliography: references.bib
 
 # Introduction
 
-This project is an investigation into the association between intravenous iron treatment (IVI) in pregnancy and its effect on post-partum interleukin-6 (IL-6) and Vitamin D levels and hence on maternal depression. The data were collected during a clinical trial described in [@froessler2022]. Three forms of Vitamin D were measured: 25(OH)D2, 25(OH)D3 and Epi25(OH)D3.
+This project is an investigation into the association between intravenous iron treatment (IVI) in pregnancy and its effect on post-partum interleukin-6 (IL-6) and Vitamin D levels and hence on maternal depression outcomes HAM-D and EPDS. The data were collected during a clinical trial described in [@froessler2022]. Three forms of Vitamin D were measured: 25(OH)D2, 25(OH)D3 and Epi25(OH)D3.
 
 # Methods
 
@@ -59,6 +60,7 @@ desc_wide %>%
                         FU == "FU2" ~ "12 months PP")) %>%
   flextable() %>%
   autofit() %>%
+  theme_box() %>%
   set_header_labels(FU = "Time point",
                     il_6_BLUE = "IL-6, \n500 mg",
                     il_6_PINK = "IL-6, \n1000 mg",
@@ -189,7 +191,17 @@ tab_cens %>%
 
 ```
 
+\newpage
+
 # Mediation analysis
+
+Mediation analysis aimed to estimate the differences between two doses of IVI on maternal mental health outcomes (HAM-D and EPDS) ("total effect") through two mechanisms:
+
+1.  the direct effect of IVI treatment, or average direct effect (ADE)
+
+2.  the indirect effect of IVI treatment through the mediation of biomarkers IL-6 or 25(OH)D3, or the average causal mediation effect (ACME)
+
+The random number method replaced the biomarker values affected by lower limits of detection for IL-6. For Vitamin D, the mediation analysis used only 25 (OH)D3 and not the other two forms.
 
 ```{r}
 #| echo: false
@@ -200,15 +212,15 @@ source("VitD_IL6_mh_mediate.R")
 
 ```
 
-## 25(OH)D3
+\newpage
 
-## HAM-D
+## Descriptive Statistics
 
-### Descriptive Statistics
-
-Descriptive Statistics for 25(OH)D3, HMAD and EPDS at screening, 6 weeks and 12 months, inclduing only participants without missing data for any of the three variables.
+Descriptive Statistics for 25(OH)D3, HMAD and EPDS at screening, 6 weeks and 12 months. **The numbers included in the descriptive statistics are different to @tbl-desc-tab because participants with missing data in either the biomarker or the outcome have been excluded.** There is more missing data for EPDS than for HAM-D. The number of participants for EPDS at 12 months at particularly low.
 
 ### 25(OH)D3
+
+#### HAM-D
 
 ```{r}
 #| label: tbl-hamd-25ohd3-desc
@@ -235,6 +247,8 @@ hamd_dep_25ohd3_fu1$desc %>%
 
 ```
 
+#### EPDS
+
 ```{r}
 #| label: tbl-epds-25ohd3-desc
 #| tbl-cap: "Mean (SD) for 25(OH)D3 and EPDS at screening (baseline), 6 weeks and 12 months. EPDS at 6 weeks and 12 months is change from baseline."
@@ -259,6 +273,12 @@ epds_25ohd3_fu1$desc %>%
   sep = "")
 ```
 
+\newpage
+
+### IL-6
+
+#### HAM-D
+
 ```{r}
 #| label: tbl-hamd-il6-desc
 #| tbl-cap: "Mean (SD) for IL-6 and HAM-D at screening (baseline), 6 weeks and 12 months. HAMD at 6 weeks and 12 months is change from baseline."
@@ -282,10 +302,14 @@ hamd_dep_il6_fu1$desc %>%
   inline = T,
   sep = "")
 
+
+
 ```
 
+#### EPDS
+
 ```{r}
-#| label: label: tbl-epds-il6-desc
+#| label: tbl-epds-il6-desc
 #| tbl-cap: "Mean (SD) for IL-6 and EPDS at screening (baseline), 6 weeks and 12 months. EPDS at 6 weeks and 12 months is change from baseline."
 
 epds_il6_fu1$desc %>%
@@ -309,7 +333,11 @@ epds_il6_fu1$desc %>%
 
 ```
 
-### Mediation Results
+\newpage
+
+## Mediation Results
+
+Estimates for ACME, ADE and Total Effect are the difference in the outcome for 500mg-1000mg. Maternal mental health outcomes are the change in HAM-D or EPDS from baseline.
 
 ```{r}
 #| label: tbl-med-results
@@ -327,31 +355,90 @@ tab_med %>%
   autofit() %>%
   theme_box() %>%
   set_header_labels(timept = "Time point",
-                    acme = "ACME", 
+                    acme = "ACME (95% CI)", 
                     acme_p = "ACME, p-value",
-                    ade = "ADE", 
+                    ade = "ADE (95% CI)", 
                     ade_p = "ADE, p-value", 
-                    ate = "Total effect", 
+                    ate = "Total effect (95% CI)", 
                     ate_p = "Total effect, p-value",
                     prop_med = "Proportion mediated") 
 
 ```
 
-There was a significant difference in the total effect and average direct effect (ADE) between the 500mg and 100mg groups on HAM-D. However, there was no significant average causal mediation effect (ACME) from 25(OH)D3 on HAMD at 6 weeks or over 12 months.
+\newpage
+
+## Plots
+
+### 25(OH)D3
+
+#### HAM-D
 
 ```{r}
-#| label: fig-il6
-#| fig-height: 8
+#| label: fig-25ohd3-hamd
+#| fig-height: 7
+#| fig-dpi: 300
 #| fig-cap: "Average Causal Mediation Effect (ACME), Average Direct Effect (ADE) and Total Effect for HAM-D mediated by 25(OH)D3"
 
 par(mfrow = c(2,1))
 
-plot(hamd_dep_25ohd3_fu1$medfit,  main = "6 weeks",xlim = c(-4,1),
+plot(hamd_dep_25ohd3_fu1$medfit,  main = "6 weeks",xlim = c(-5,1),
     treatment = "treated",
      # labels  =c("Indirect","Direct" ,"Total"),
      xlab = "Change in HAM-D from baseline (500mg-1000mg)")
 
-plot(hamd_dep_25ohd3_fu2$medfit,  main = "12 months",xlim = c(-4,1),
+plot(hamd_dep_25ohd3_fu2$medfit,  main = "12 months",xlim = c(-5,1),
+    treatment = "treated",
+     #labels  =c("Indirect","Direct" ,"Total"), 
+     xlab = "Change in HAM-D from baseline (500mg-1000mg)")
+
+
+```
+
+\newpage
+
+#### EPDS
+
+```{r}
+#| label: fig-25ohd3-epds
+#| fig-height: 7
+#| fig-dpi: 300
+#| fig-cap: "Average Causal Mediation Effect (ACME), Average Direct Effect (ADE) and Total Effect for EPDS mediated by 25(OH)D3"
+
+
+par(mfrow = c(2,1))
+
+plot(epds_25ohd3_fu1$medfit,  main = "6 weeks",xlim = c(-4,6),
+    treatment = "treated",
+     # labels  =c("Indirect","Direct" ,"Total"),
+     xlab = "Change in EPDS from baseline (500mg-1000mg)")
+
+plot(epds_25ohd3_fu2$medfit,  main = "12 months",xlim = c(-4,6),
+    treatment = "treated",
+     #labels  =c("Indirect","Direct" ,"Total"), 
+     xlab = "Change in EPDS from baseline (500mg-1000mg)")
+
+```
+
+\newpage
+
+### IL-6
+
+#### HAM-D
+
+```{r}
+#| label: fig-il6-hamd
+#| fig-height: 7
+#| fig-dpi: 300
+#| fig-cap: "Average Causal Mediation Effect (ACME), Average Direct Effect (ADE) and Total Effect for HAM-D mediated by IL-6"
+
+par(mfrow = c(2,1))
+
+plot(hamd_dep_il6_fu1$medfit,  main = "6 weeks",xlim = c(-5,1),
+    treatment = "treated",
+     # labels  =c("Indirect","Direct" ,"Total"),
+     xlab = "Change in HAM-D from baseline (500mg-1000mg)")
+
+plot(hamd_dep_il6_fu2$medfit,  main = "12 months",xlim = c(-5,1),
     treatment = "treated",
      #labels  =c("Indirect","Direct" ,"Total"), 
      xlab = "Change in HAM-D from baseline (500mg-1000mg)")
@@ -360,10 +447,35 @@ plot(hamd_dep_25ohd3_fu2$medfit,  main = "12 months",xlim = c(-4,1),
 
 ```
 
-## IL-6
+\newpage
+
+#### EPDS
+
+```{r}
+#| label: fig-il6-epds
+#| fig-height: 7
+#| fig-dpi: 300
+#| fig-cap: "Average Causal Mediation Effect (ACME), Average Direct Effect (ADE) and Total Effect for EPDS mediated by IL-6"
+
+par(mfrow = c(2,1))
+
+plot(epds_il6_fu1$medfit,  main = "6 weeks",xlim = c(-4,6),
+     treatment = "treated",
+     #labels  =c("Indirect","Direct" ,"Total"),
+     xlab = "Change in EPDS from baseline (500mg-1000mg)")
+
+plot(epds_il6_fu2$medfit,  main = "12 months",xlim = c(-4,6),
+    treatment = "treated",
+     #labels  =c("Indirect","Direct" ,"Total"), 
+     xlab = "Change in EPDS from baseline (500mg-1000mg)")
+
+par(mfrow = c(1,1))
+```
 
 # Discussion
 
-Given the results from the two methods in the association analysis are similar, I propose using the random number method to replace the biomarker values affected by lower limits of detection for IL-6. For Vitamin D, I propose using the mediation analysis on 25 (OH)D3 only and not the other two forms.
+There was a significant difference in the total effect and average direct effect (ADE) between the 500mg and 100mg groups on HAM-D and EPDS at 6 weeks. **However, there was no significant average causal mediation effect (ACME) from 25(OH)D3 or IL-6 on either maternal mental health outcome. In addition, the proportion of the total effect that was mediated was close to zero for all mediators and outcomes.**
+
+The results for HAMD-D and particularly EPDS at 12 months are variable depending on the mediator, most likely due to different patterns of missing data between IL-6 and 25(OH)D3. **Therefore, results at 12 months may be biased due to missing data and should be treated with caution.**
 
 # References

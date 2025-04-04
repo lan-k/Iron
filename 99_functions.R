@@ -10,9 +10,9 @@ quantile_str <- function(x, probs = c(0.25, 0.5, 0.75), digits=0) {
   value = quantile(x, probs, na.rm=T, digits=digits)
   n=sum(!is.na(x))
   
-  med_iqr = paste0(as.character(round(value[2],digits=digits)), " (", 
-                   as.character(round(value[1],digits=digits)), "-",
-                   as.character(round(value[3],digits=digits)), ")",
+  med_iqr = paste0(as.character(roundz(value[2],digits=digits)), " (", 
+                   as.character(roundz(value[1],digits=digits)), "-",
+                   as.character(roundz(value[3],digits=digits)), ")",
                    " (N=",n,")")
   
   return(med_iqr)
@@ -34,8 +34,8 @@ mean_sd <- function(x,  digits=2, exp = F) {
   }
   
   
-  mean_sd = paste0(as.character(round(mean,digits=digits)), " (", 
-                   as.character(round(sd,digits=digits)), ")",
+  mean_sd = paste0(as.character(roundz(mean,digits=digits)), " (", 
+                   as.character(roundz(sd,digits=digits)), ")",
                    " (N=",n,")")
   
   return(mean_sd)
@@ -63,7 +63,7 @@ est_ci = function(est, ci, digits=2) {
 fit_censreg = function(form, df, leftlim = -Inf, rightlim = Inf,
                        label = "") {
   
-  
+  df = df %>% mutate(time = factor(time))
   fit <- censReg( form,  data = df, method = "BHHH",
                   left = leftlim, right=rightlim)
                              
@@ -126,6 +126,7 @@ fit_censreg = function(form, df, leftlim = -Inf, rightlim = Inf,
 
 fit_lmer = function(form, df, label = "") {
   
+  df = df %>% mutate(time = factor(time))
   fit <- lmer(form , data = df) 
   
 
@@ -225,7 +226,9 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
                    all_of(c(outcome, outcome_base, 
                   mediator, mediator_base ))) %>%
     na.omit() %>%
-    mutate(timept=ifelse(as.character(time == "1"), "FU1", "FU2"))
+    arrange(study_id, time) %>%
+    mutate(timept=ifelse(as.character(time == "1"), "6 weeks", "12 months"),
+           time=factor(time))
   
   ##descriptives
   if (exp) {
@@ -238,7 +241,7 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
     
     base = dat %>%
       dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
-      mutate(timept = "SCR") %>%
+      mutate(timept = "Screening") %>%
       group_by(treat, timept) %>%
       reframe(across(all_of(c( mediator_base)), \(x) mean_sd(x, digits=2, exp=T)),
               across(all_of(c( outcome_base)), \(x) mean_sd(x, digits=2, exp=F))) %>% 
@@ -255,7 +258,7 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
     
     base = dat %>%
       dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
-      mutate(timept = "SCR") %>%
+      mutate(timept = "Screening") %>%
       group_by(treat, timept) %>%
       reframe(across(all_of(c( mediator_base, outcome_base)), \(x) mean_sd(x, digits=2))) %>% 
       ungroup() 
@@ -276,7 +279,8 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
   desc_wide <- desc %>%
     dplyr::select(treat,timept, all_of(c(mediator, outcome))) %>%
     pivot_wider(names_from = "treat", 
-                values_from = c(mediator, outcome) )
+                values_from = c(mediator, outcome) ) %>% 
+    arrange(desc(timept))
   
   desc_wide = bind_rows(base_wide, desc_wide)
   
