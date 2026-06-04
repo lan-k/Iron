@@ -152,3 +152,103 @@ bio_desc_wide %>%
                     ) %>%
   set_caption(caption = "Biomarkers (mean (SD))")
 
+
+# ---- bio_desc_p ----
+
+# 4/6/2026 add p-values for assessor's comments
+rm(list=ls())
+library(arsenal)
+library(janitor)
+
+contvars = c("Age","BMI", "Education_years", 
+             "GA_Screening", "GA_FirstIx",
+             "Hb_Screening","Ferritin_Screening","Iron_screening",
+             "TF_Screening","TSAT_Screening",
+             "MCH_Screening","Serumfolate_Screen2",
+             "serumb12_screening","activeb12_screening",
+             "CRP_Screening", "il_6_screen",
+             "BL_MH_HAMD_DEP","BL_MH_EPDS")
+catvars = c("Twins","Anaemia", "income","Supp_code"
+)
+
+vars = c(contvars, catvars)
+
+mycontrols  <- tableby.control(test=T, total=F,
+                               na.action=na.tableby(F),
+                               numeric.test = "wt",
+                               cat.test = "chisq",
+                               chisq.correct = FALSE,
+                               cat.simplify = T,
+                               numeric.stats=c("N","Nmiss", "medianq1q3"), #,"min","max"
+                               cat.stats=c("Nmiss2","countpct"),
+                               stats.labels=list(N="N",Nmiss = "Missing",
+                                                 Nmiss2="Missing",medianq1q3='Median (IQR)'),
+                               digits=0, digits.p=2, digits.pct=1)
+
+
+
+iron <- read.csv(file="../Iron dose RCT_audit_24jan_TIDY.csv", na = "9999") %>%
+  select(Study_ID,  Age, BMI, Anaemia, income, 
+         Education_years, Education_level, Twins, Supp_code, GA_FirstIx, 
+         Serumfolate_Screen2,
+         matches("Screening|screening"))
+
+
+
+base_desc <- read_sas(data_file = "../iron_mh.sas7bdat") %>%
+  filter(time==3) %>%
+  select(Study_ID,rand,  contains("BL"))
+
+base_desc = left_join(iron, base_desc) 
+
+load(file="mh_il6_vitd.rds" )
+
+
+
+desc = left_join(base_desc, 
+                 mh_il6_vitd %>% filter(time == 1) %>%
+                   select(study_id, il_6_screen), by=c("Study_ID" = "study_id"))
+
+
+desc = desc %>%
+  rename(#Serumfolate = Serumfolate_screening,
+         Ferritin = Ferritin_Screening) %>%
+  mutate(#Serumfolate_screening = as.numeric(gsub("\\D", "", Serumfolate)),
+         # Serumfolate_screening = ifelse(Serumfolate_screening > 1000, NA, Serumfolate_screening),
+         Ferritin_Screening     = as.numeric(gsub("\\D", "", Ferritin))) %>%
+  select(!Ferritin)
+
+
+
+summary(desc$Serumfolate_Screen2)
+summary(desc$Ferritin_Screening)
+
+tabdata = desc %>% 
+  select(Study_ID, rand, all_of(vars)) %>%
+  mutate(income = case_when(is.na(income) ~ 0, 
+                            income == 6 ~ 5, 
+                            TRUE ~ income),
+         Supp_code = ifelse(is.na(Supp_code), 5,Supp_code),
+         
+         across(all_of(catvars), ~factor(.)))
+
+
+formula <- as.formula(paste0("rand ~  ", paste0(vars, collapse="+")))
+
+tabdesc <- tableby(formula, data=tabdata , 
+                       control=mycontrols)
+
+
+summary(tabdesc, text = T, pfootnote = T)
+
+summary(padjust(tabdesc, method= "bonf",
+                suffix = " (adjusted for multiple comparisons)"), 
+        title='Patient Characteristics by group', 
+        text = T, pfootnote = T)
+
+
+
+tabdesc2 <- tableby(rand ~ Hb_Screening + log(il_6_screen), data=tabdata, test=T)
+summary(tabdesc2, text = T, pfootnote = T)
+
+                      
