@@ -226,7 +226,15 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
                    all_of(c(outcome, outcome_base, 
                   mediator, mediator_base ))) %>%
     na.omit() %>%
-    arrange(study_id, time) %>%
+    arrange(study_id, time) 
+  
+  base = df %>%
+    filter(time == timept) %>%
+    dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
+  na.omit() 
+  
+  
+  dat <- dat %>%
     mutate(timept=ifelse(as.character(time == "1"), "6 weeks", "12 months"),
            time=factor(time))
   
@@ -235,12 +243,14 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
     
     desc = dat %>%
       group_by(treat, timept) %>%
-      reframe(across(all_of(c(mediator, outcome)), \(x) mean_sd(x, digits=2, exp=T))) %>% 
+      reframe(#across(all_of(c(mediator, outcome)), \(x) mean_sd(x, digits=2, exp=T))
+              across(all_of(c( mediator)), \(x) mean_sd(x, digits=2, exp=T)),
+              across(all_of(c( outcome)), \(x) mean_sd(x, digits=2, exp=F))
+              ) %>% 
       ungroup()
     
     
-    base = dat %>%
-      dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
+     base = base %>%
       mutate(timept = "Screening") %>%
       group_by(treat, timept) %>%
       reframe(across(all_of(c( mediator_base)), \(x) mean_sd(x, digits=2, exp=T)),
@@ -258,6 +268,7 @@ mh_mediate = function( outcome, outcome_base, mediator, mediator_base,
     
     base = dat %>%
       dplyr::select(treat, all_of(c(mediator_base, outcome_base))) %>%
+      na.omit() %>%
       mutate(timept = "Screening") %>%
       group_by(treat, timept) %>%
       reframe(across(all_of(c( mediator_base, outcome_base)), \(x) mean_sd(x, digits=2))) %>% 

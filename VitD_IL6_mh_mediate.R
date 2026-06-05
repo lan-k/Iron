@@ -126,7 +126,8 @@ df_epds_25ohd3 = bind_rows(df_epds_25ohd3_fu1 %>% mutate(timept = "6 weeks"),
 
 # 6 weeks
 
-hamd_dep_il6_fu1 = mh_mediate("mh_hamd_dep", "bl_mh_hamd_dep","log_il6", "log_il6_screen", 
+hamd_dep_il6_fu1 = mh_mediate(outcome = "mh_hamd_dep", outcome_base = "bl_mh_hamd_dep",
+                              mediator = "log_il6", mediator_base = "log_il6_screen", 
                                   timept = 1, exp=T, nsim = 500)
 
 df_hamd_dep_il6_fu1= tab_mh_mediate(hamd_dep_il6_fu1$medfit, "HAM-D", "IL-6")
